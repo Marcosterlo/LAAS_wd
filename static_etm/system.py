@@ -140,8 +140,8 @@ class System:
     T = self.T[0]
     vec2 = (self.G[0] @ (x.detach().numpy() - self.xstar).reshape(2,1) - (self.last_w[0] - self.wstar[0]))
 
-    # if (vec1 @ T @ vec2 > 0):
-    if True:
+    if (vec1 @ T @ vec2 > 0):
+    # if True:
       # If there is an event we compute the output of the layer with the non linear activation function
       omega = self.saturation_activation(torch.tensor(nu))
       # We substitute last computed value
@@ -159,8 +159,8 @@ class System:
     T = self.T[1]
     vec2 = (self.G[1] @ (x.detach().numpy() - self.xstar).reshape(2,1) - (self.last_w[1] - self.wstar[1]))
 
-    # if (vec1 @ T @ vec2 > 0):
-    if True:
+    if (vec1 @ T @ vec2 > 0):
+    # if True:
       omega = self.saturation_activation(torch.tensor(nu))
       self.last_w[1] = omega.detach().numpy()
       e2 = 1
@@ -222,7 +222,7 @@ if __name__ == "__main__":
 
   x0 = np.array([1.1, -2.9])
   # x0 = s.xstar
-  nstep = 30000
+  nstep = 150 
 
   states, inputs, events = s.dynamic_loop(x0, nstep)
   x = states[:, 0]
@@ -233,25 +233,33 @@ if __name__ == "__main__":
   for i in range(nstep):
     lyap.append(((states[i, :] - s.xstar).T @ P @ (states[i, :] - s.xstar))[0][0])
 
+  for i, event in enumerate(events[1, :]):
+    if not event:
+      events[1, i] = None
+  for i, event in enumerate(events[0, :]):
+    if not event:
+      events[0, i] = None
+
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].plot(time_grid, x - s.xstar[0])
+  axs[0, 0].plot(time_grid, events[1, :]*(x - s.xstar[0]).reshape(len(time_grid)), 'ro')
   axs[0, 0].set_title("Position")
   axs[0, 0].set_xlabel("Time [s]")
   axs[0, 0].set_ylabel("Position [rad]")
 
   axs[0, 1].plot(time_grid, v - s.xstar[1])
+  axs[0, 1].plot(time_grid, events[1, :]*(v - s.xstar[1]).reshape(len(time_grid)), 'ro')
   axs[0, 1].set_title("Velocity")
   axs[0, 1].set_xlabel("Time [s]")
   axs[0, 1].set_ylabel("Velocity [rad/s]")
 
   axs[1, 0].plot(time_grid, u)
-  # axs[1, 0].stem(time_grid, events[1, :])
+  axs[1, 0].plot(time_grid, events[1, :]*u, 'ro')
   axs[1, 0].set_title("Inputs")
   axs[1, 0].set_xlabel("Time [s]")
   axs[1, 0].set_ylabel("Control input")
 
-  # axs[1, 1].stem(time_grid, events[0, :]*0.5)
-  # axs[1, 1].stem(time_grid, events[1, :]*1)
+  axs[1, 1].plot(time_grid, events[1, :]*lyap, 'ro')
   axs[1, 1].plot(time_grid, lyap)
   axs[1, 1].set_title("Lyapunov function")
 
