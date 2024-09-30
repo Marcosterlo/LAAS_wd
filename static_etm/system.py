@@ -2,10 +2,9 @@ import numpy as np
 import scipy.io
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import matplotlib.pyplot as plt
-from pathlib import Path
 from scipy.linalg import block_diag
+import os
 
 class System:
   
@@ -33,7 +32,7 @@ class System:
     self.nu = 1
 
     # Weights import of trained FFNN
-    mat_name = Path(__file__).with_name('weight_saturation.mat')
+    mat_name = os.path.abspath(__file__ + "/../mat-weights/weight_saturation.mat")
     data = scipy.io.loadmat(mat_name)
     W1 = data['W1']
     W2 = data['W2']
@@ -63,37 +62,41 @@ class System:
     # Gain matrix
     self.K = np.array([-0.1, 0]).reshape(1,2)
 
-    # Equilibrium states
+    # Closed loop matrices
     N = block_diag(*self.W) # Reminder for myself: * operator unpacks lists and pass it as singular arguments
-
     Nux = self.K
     Nuw = N[self.nphi:, self.nx:]
     Nub = self.b[-1]
-
     Nvx = N[:self.nphi, :self.nx]
     Nvw = N[:self.nphi, self.nx:]
     Nvb = np.concatenate((self.b[0], self.b[1]))
+
+    # Auxiliary matrices
     R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
     Rw = Nux + Nuw @ R @ Nvx
     Rb = Nuw @ R @ Nvb + Nub
+
+    # Equilibrium states
     self.xstar = np.linalg.inv(np.eye(self.A.shape[0]) - self.A - self.B @ Rw) @ self.B @ Rb
     wstar = R @ Nvx @ self.xstar + R @ Nvb
-    wstar = np.split(wstar, [32])[0]
+
+    # I create the array indeces to split wstar into
+    indeces = [self.neurons[0]]
+    self.wstar = np.split(wstar, indeces)
 
     # Std of random state noise
     self.stdx = 0.01
 
     # Std of random input noise
     self.stdu = 0.01
-
    
-    # Number of layers of the FFNN
+    # Number of layers of the FFNN (+1 to include last layer for input computation)
     self.nlayer = 3
 
     # Bound value for saturation function
     self.bound = 1
 
-    # Model cereation
+    # Model creation
     self.layer1 = nn.Linear(self.nx, W1.shape[0])
     self.layer2 = nn.Linear(W1.shape[0], W2.shape[0])
     self.layer3 = nn.Linear(W2.shape[0], self.nu)
@@ -110,74 +113,74 @@ class System:
     self.layers = [self.layer1, self.layer2, self.layer3]
 
     # T and Z matrices import from LMI solution
-    T = np.load("T_mat.npy")
-    Z = np.load("Z_mat.npy")
+    T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_mat.npy")
+    Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_mat.npy")
+    T = np.load(T_mat_name)
+    Z = np.load(Z_mat_name)
+    # I compose G matrix following the paper
     G = np.linalg.inv(T) @ Z
-    indeces = np.linspace(0, self.nphi, self.nlayer).astype(np.int8)
-    indeces = indeces[1:-1].tolist()
+    # I split it into blocks per each layer
     self.G = np.split(G, indeces)
     self.T = []
+    # I split block diagonal matrix T into blocks for each layer
     for i in range(self.nlayer -1):
       self.T.append(T[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
 
     ## Class variable
     self.state = None
     self.last_w = []
-    self.wstar = []
     for i, neuron in enumerate(self.neurons):
+      # Initialized with big values to trigger an update at first time step
       self.last_w.append(np.ones((neuron, 1))*1e3)
-      self.wstar.append(np.ones((neuron, 1))*wstar[i])
+      # Reshape of wstar vector to make it compatible with last_w
+      self.wstar[i] = self.wstar[i].reshape(len(self.wstar[i]), 1)
     
   # Function that predicts the input
-  def forward(self, x):
-    e1 = 0
-    e2 = 0
-    # 1st layer
-    nu = self.layers[0](x).detach().numpy().reshape(32, 1)
+  def forward(self, x, ETM):
 
-    # ETM evaluation
-    vec1 = (nu - self.last_w[0]).T
-    T = self.T[0]
-    vec2 = (self.G[0] @ (x.detach().numpy() - self.xstar).reshape(2,1) - (self.last_w[0] - self.wstar[0]))
+    x = x.reshape(1, self.W[0].shape[1])
+    e = np.zeros(self.nlayer - 1)
 
-    if (vec1 @ T @ vec2 > 0):
-    # if True:
-      # If there is an event we compute the output of the layer with the non linear activation function
-      omega = self.saturation_activation(torch.tensor(nu))
-      # We substitute last computed value
-      self.last_w[0] = omega.detach().numpy()
-      e1 = 1
-    else:
-      # If no event occurs we feed the next layer the last stored output
-      omega = self.last_w[0]
+    for l in range(self.nlayer - 1):
+      if l == 0:
+        nu = self.layers[l](torch.tensor(x)).detach().numpy().reshape(self.W[l].shape[0], 1)
+      else:
+        nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1]))).detach().numpy().reshape(self.W[l].shape[0], 1)
 
-    # 2nd layer
-    nu = self.layers[1](torch.tensor(omega.T)).detach().numpy().reshape(32, 1)
+      # ETM evaluation
+      vec1 = (nu - self.last_w[l]).T
+      T = self.T[l]
+      vec2 = (self.G[l] @ (x - self.xstar).reshape(self.nx, 1) - (self.last_w[l] - self.wstar[l]))
 
-    # 2nd ETM evaluation
-    vec1 = (nu - self.last_w[1]).T
-    T = self.T[1]
-    vec2 = (self.G[1] @ (x.detach().numpy() - self.xstar).reshape(2,1) - (self.last_w[1] - self.wstar[1]))
+      if ETM:
+        check = vec1 @ T @ vec2 > 0
+      else:
+        check = True
 
-    if (vec1 @ T @ vec2 > 0):
-    # if True:
-      omega = self.saturation_activation(torch.tensor(nu))
-      self.last_w[1] = omega.detach().numpy()
-      e2 = 1
-    else:
-      # If no event occurs we feed the next layer the last stored output
-      omega = self.last_w[1]
+      if check:
+        # If there is an event we compute the output of the layer with the non linear activation function
+        omega = self.saturation_activation(torch.tensor(nu))
+        # We substitute last computed value
+        self.last_w[l] = omega.detach().numpy()
+        e[l] = 1
+      else:
+        # If no event occurs we feed the next layer the last stored output
+        omega = self.last_w[l]
 
-    # 3rd layer
-    omega = self.layers[2](torch.tensor(omega.T))
+    # Last layer
+    l = self.nlayer - 1
+    nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1])))
+    omega = self.saturation_activation(nu).detach().numpy().reshape(self.W[l].shape[0], 1)
 
-    return omega, e1, e2
+    return omega, e
+
+    
 
   # Customly defined activation function since sat doesn't exist on tensorflow
   def saturation_activation(self, value):
     return torch.clamp(value, min=-self.bound, max=self.bound)
 
-  def dynamic_loop(self, x0, nstep):
+  def dynamic_loop(self, x0, nstep, ETM):
 
     e = np.zeros((2, nstep))
 
@@ -186,25 +189,21 @@ class System:
 
     states = []
     inputs = []
+    events = []
 
     for i in range(nstep):
-      u, e1, e2 = self.forward(torch.tensor(self.state.reshape(1, 2)))
-      u = u.detach().numpy()[0]
+      u, e = self.forward(self.state, ETM)
       x = (self.A + self.B @ self.K) @ self.state.reshape(2,1) + self.B @ u.reshape(1, 1)
 
       self.state = x.reshape(2, 1)# + (np.random.randn(self.nx)*self.stdx).reshape(2, 1)
-      u = u# + np.random.randn(self.nu)*self.stdu
+      # u = u + np.random.randn(self.nu)*self.stdu
 
       states.append(x)
       inputs.append(u)
+      events.append(e)
 
-      if e1:
-        e[0, i] = 1
 
-      if e2:
-        e[1, i] = 1 
-
-    return np.array(states), np.array(inputs), e
+    return np.array(states), np.array(inputs), np.array(events)
   
 
 # Main execution
@@ -213,18 +212,19 @@ if __name__ == "__main__":
   # Test of instance creation
   s = System()
 
-  P = np.load("P_mat.npy")
+  P_mat_name = os.path.abspath(__file__ + "/../mat-weights/P_mat.npy")
+  P = np.load(P_mat_name)
 
   states = []
   inputs = []
   events = []
   lyap = []
 
-  x0 = np.array([1.1, -2.9])
-  # x0 = s.xstar
-  nstep = 150 
+  x0 = np.array([np.pi/2, 0])
+  nstep = 3000
+  ETM = True
 
-  states, inputs, events = s.dynamic_loop(x0, nstep)
+  states, inputs, events = s.dynamic_loop(x0, nstep, ETM)
   x = states[:, 0]
   v = states[:, 1]
   u = inputs.reshape(len(inputs))
@@ -233,33 +233,32 @@ if __name__ == "__main__":
   for i in range(nstep):
     lyap.append(((states[i, :] - s.xstar).T @ P @ (states[i, :] - s.xstar))[0][0])
 
-  for i, event in enumerate(events[1, :]):
-    if not event:
-      events[1, i] = None
-  for i, event in enumerate(events[0, :]):
-    if not event:
-      events[0, i] = None
+  for i, event in enumerate(events):
+    if not event[0]:
+      events[i][0] = None
+    if not event[1]:
+      events[i][1] = None
 
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].plot(time_grid, x - s.xstar[0])
-  axs[0, 0].plot(time_grid, events[1, :]*(x - s.xstar[0]).reshape(len(time_grid)), 'ro')
+  axs[0, 0].plot(time_grid, events[:, 1]*(x - s.xstar[0]).reshape(len(time_grid)), 'ro')
   axs[0, 0].set_title("Position")
   axs[0, 0].set_xlabel("Time [s]")
   axs[0, 0].set_ylabel("Position [rad]")
 
   axs[0, 1].plot(time_grid, v - s.xstar[1])
-  axs[0, 1].plot(time_grid, events[1, :]*(v - s.xstar[1]).reshape(len(time_grid)), 'ro')
+  axs[0, 1].plot(time_grid, events[:, 1]*(v - s.xstar[1]).reshape(len(time_grid)), 'ro')
   axs[0, 1].set_title("Velocity")
   axs[0, 1].set_xlabel("Time [s]")
   axs[0, 1].set_ylabel("Velocity [rad/s]")
 
   axs[1, 0].plot(time_grid, u)
-  axs[1, 0].plot(time_grid, events[1, :]*u, 'ro')
+  axs[1, 0].plot(time_grid, events[:, 1]*u, 'ro')
   axs[1, 0].set_title("Inputs")
   axs[1, 0].set_xlabel("Time [s]")
   axs[1, 0].set_ylabel("Control input")
 
-  axs[1, 1].plot(time_grid, events[1, :]*lyap, 'ro')
+  # axs[1, 1].plot(time_grid, events[:, 1]*lyap, 'ro')
   axs[1, 1].plot(time_grid, lyap)
   axs[1, 1].set_title("Lyapunov function")
 
