@@ -63,6 +63,8 @@ R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
 Rw = Nux + Nuw @ R @ Nvx
 Rb = Nuw @ R @ Nvb + Nub
 Abar = A + B @ K + B @ Nuw @ R @ Nvx
+
+# The fastes way I found to create big matrices was to create lines and stack them together
 Rline1 = np.concatenate((np.eye(nx), np.zeros((2, 64))), axis=1)
 Rline2 = np.concatenate((R @ Nvx, np.eye(nphi) - R), axis=1)
 Rline3 = np.concatenate((np.zeros((nphi, nx)), np.eye(nphi)), axis=1)
@@ -90,8 +92,6 @@ inclusion = cp.bmat([
 ])
 constraints += [inclusion >> fake_zero(inclusion.shape[0])]
 
-ellips = []
-
 # Ellipsoid condition
 for i in range(nlayer-1):
     for k in range(neurons):
@@ -102,8 +102,6 @@ for i in range(nlayer-1):
             [cp.reshape(Z_el, (1,2)), cp.reshape(2*alpha*T_el - alpha**2*vbar**(-2), (1, 1))] 
         ])
         constraints += [ellip >> 0]
-        ellips.append(ellip)
-
 
 # Optimization condition
 objective = cp.Minimize(rho)
@@ -121,8 +119,9 @@ if prob.status not in  ["infeasible", "ubounded"]:
     print("Max M eigenvalue: ", np.max(np.linalg.eigvals(M.value)))
     print("Max T eigenvalue: ", np.max(np.linalg.eigvals(T.value)))
 
-    np.save("P_mat", P.value)
-    np.save("Z_mat", Z.value)
-    np.save("T_mat", T.value)
+    # Saving matrices to npy file
+    # np.save("P_mat", P.value)
+    # np.save("Z_mat", Z.value)
+    # np.save("T_mat", T.value)
 else:
     print("=========== Unfeasible problem =============")
