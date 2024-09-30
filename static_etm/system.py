@@ -32,6 +32,7 @@ class System:
     self.nu = 1
 
     # Weights import of trained FFNN
+    # Script to use relative path
     mat_name = os.path.abspath(__file__ + "/../mat-weights/weight_saturation.mat")
     data = scipy.io.loadmat(mat_name)
     W1 = data['W1']
@@ -112,7 +113,7 @@ class System:
 
     self.layers = [self.layer1, self.layer2, self.layer3]
 
-    # T and Z matrices import from LMI solution
+    # T and Z matrices import from LMI solution with relative path
     T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_mat.npy")
     Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_mat.npy")
     T = np.load(T_mat_name)
@@ -135,14 +136,21 @@ class System:
       # Reshape of wstar vector to make it compatible with last_w
       self.wstar[i] = self.wstar[i].reshape(len(self.wstar[i]), 1)
     
-  # Function that predicts the input
+  ## Function that predicts the input
   def forward(self, x, ETM):
-
+    
+    # Reshape fo state according to NN dimensions
     x = x.reshape(1, self.W[0].shape[1])
+    
+    # Initialization of empty vector to store events
     e = np.zeros(self.nlayer - 1)
 
+    # Loop for each layer
     for l in range(self.nlayer - 1):
+      
+      # If we are in the fist layer the input is initial x, otherwise it is the omega of the previous layer
       if l == 0:
+        # Detach, numpy and reshape are used to cast to np array of the correct shape in order to hav
         nu = self.layers[l](torch.tensor(x)).detach().numpy().reshape(self.W[l].shape[0], 1)
       else:
         nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1]))).detach().numpy().reshape(self.W[l].shape[0], 1)
@@ -152,6 +160,7 @@ class System:
       T = self.T[l]
       vec2 = (self.G[l] @ (x - self.xstar).reshape(self.nx, 1) - (self.last_w[l] - self.wstar[l]))
 
+      # Flag to enbale/disable ETM
       if ETM:
         check = vec1 @ T @ vec2 > 0
       else:
@@ -167,23 +176,21 @@ class System:
         # If no event occurs we feed the next layer the last stored output
         omega = self.last_w[l]
 
-    # Last layer
+    # Last layer, different since it doesn't need ETM evaluation and w value update
     l = self.nlayer - 1
     nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1])))
     omega = self.saturation_activation(nu).detach().numpy().reshape(self.W[l].shape[0], 1)
 
     return omega, e
 
-    
-
-  # Customly defined activation function since sat doesn't exist on tensorflow
+  ## Customly defined activation function since sat doesn't exist on tensorflow
   def saturation_activation(self, value):
     return torch.clamp(value, min=-self.bound, max=self.bound)
 
+  ## Function that evaluates the closed loop dynamics
   def dynamic_loop(self, x0, nstep, ETM):
 
-    e = np.zeros((2, nstep))
-
+    # Initializes the state variable of the system to the initial condition
     if self.state == None:
       self.state = x0
 
@@ -191,17 +198,23 @@ class System:
     inputs = []
     events = []
 
+    # Loop called at each step
     for i in range(nstep):
+
+      # Input computation via NN controller, events are tracked
       u, e = self.forward(self.state, ETM)
+      
+      # Forward dynamics
       x = (self.A + self.B @ self.K) @ self.state.reshape(2,1) + self.B @ u.reshape(1, 1)
 
-      self.state = x.reshape(2, 1)# + (np.random.randn(self.nx)*self.stdx).reshape(2, 1)
+      # Optional noise addition
+      # self.state = x + (np.random.randn(self.nx)*self.stdx).reshape(2, 1)
+      self.state = x
       # u = u + np.random.randn(self.nu)*self.stdu
 
       states.append(x)
       inputs.append(u)
       events.append(e)
-
 
     return np.array(states), np.array(inputs), np.array(events)
   
@@ -209,56 +222,72 @@ class System:
 # Main execution
 if __name__ == "__main__":
 
-  # Test of instance creation
+  # Systam object creation
   s = System()
 
+  # Import of P matrix from LMI solution
   P_mat_name = os.path.abspath(__file__ + "/../mat-weights/P_mat.npy")
   P = np.load(P_mat_name)
-
+  
+  # Empty vectors initialization
   states = []
   inputs = []
   events = []
   lyap = []
 
+  # Simulation parameters
   x0 = np.array([np.pi/2, 0])
-  nstep = 3000
+  # In time it's nstep*s.dt = nstep * 0.02 s
+  nstep = 500
   ETM = True
+  print_events = False
 
+  # Call to simulation function of object System
   states, inputs, events = s.dynamic_loop(x0, nstep, ETM)
+  
+  # Unpacking vectors
   x = states[:, 0]
   v = states[:, 1]
   u = inputs.reshape(len(inputs))
   time_grid = np.linspace(0, nstep * s.dt, nstep)
   
+  # Creation of lyapunov function vector
   for i in range(nstep):
     lyap.append(((states[i, :] - s.xstar).T @ P @ (states[i, :] - s.xstar))[0][0])
 
+  # Conversion of non events to None for ease of plotting
   for i, event in enumerate(events):
     if not event[0]:
       events[i][0] = None
     if not event[1]:
       events[i][1] = None
 
+  ## Plotting
+  
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].plot(time_grid, x - s.xstar[0])
-  axs[0, 0].plot(time_grid, events[:, 1]*(x - s.xstar[0]).reshape(len(time_grid)), 'ro')
+  if print_events:
+    axs[0, 0].plot(time_grid, events[:, 1]*(x - s.xstar[0]).reshape(len(time_grid)), 'ro')
   axs[0, 0].set_title("Position")
   axs[0, 0].set_xlabel("Time [s]")
   axs[0, 0].set_ylabel("Position [rad]")
 
   axs[0, 1].plot(time_grid, v - s.xstar[1])
-  axs[0, 1].plot(time_grid, events[:, 1]*(v - s.xstar[1]).reshape(len(time_grid)), 'ro')
+  if print_events:
+    axs[0, 1].plot(time_grid, events[:, 1]*(v - s.xstar[1]).reshape(len(time_grid)), 'ro')
   axs[0, 1].set_title("Velocity")
   axs[0, 1].set_xlabel("Time [s]")
   axs[0, 1].set_ylabel("Velocity [rad/s]")
 
   axs[1, 0].plot(time_grid, u)
-  axs[1, 0].plot(time_grid, events[:, 1]*u, 'ro')
+  if print_events:
+    axs[1, 0].plot(time_grid, events[:, 1]*u, 'ro')
   axs[1, 0].set_title("Inputs")
   axs[1, 0].set_xlabel("Time [s]")
   axs[1, 0].set_ylabel("Control input")
 
-  # axs[1, 1].plot(time_grid, events[:, 1]*lyap, 'ro')
+  if print_events:
+    axs[1, 1].plot(time_grid, events[:, 1]*lyap, 'ro')
   axs[1, 1].plot(time_grid, lyap)
   axs[1, 1].set_title("Lyapunov function")
 
