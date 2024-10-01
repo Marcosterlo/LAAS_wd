@@ -38,7 +38,7 @@ Nvb = np.concatenate((b[0], b[1]))
 def fake_zero(size):
     return 1e-3 * np.eye(size)
 
-# rho and lambda creation
+# rho and lambda for beta term
 r = 0.42
 l = 1 - r - 0.1
 beta = (1 - l) / r

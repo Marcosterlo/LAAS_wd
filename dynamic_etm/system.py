@@ -5,6 +5,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 from scipy.linalg import block_diag
 import os
+import sys
 
 class System:
   
@@ -144,13 +145,17 @@ class System:
     ## Function that predicts the input
   def forward(self, x, ETM, DYNAMIC):
 
+    # Variable to store sector values
     val = 0
-    
+
     # Reshape fo state according to NN dimensions
     x = x.reshape(1, self.W[0].shape[1])
     
     # Initialization of empty vector to store events
     e = np.zeros(self.nlayer - 1)
+
+    # Initialization of empty vector to store sector values
+    sec = np.zeros(self.nlayer - 1)
 
     # Loop for each layer
     for l in range(self.nlayer - 1):
@@ -166,6 +171,7 @@ class System:
       vec1 = (nu - self.last_w[l]).T
       T = self.T[l]
       vec2 = (self.G[l] @ (x - self.xstar).reshape(self.nx, 1) - (self.last_w[l] - self.wstar[l]))
+
 
       # Flag to enbale/disable ETM
       if ETM:
@@ -195,6 +201,9 @@ class System:
         # If no event occurs we feed the next layer the last stored output
         omega = self.last_w[l]
 
+      sec[l] = (vec1 @ T @ vec2)[0][0]
+
+
     # Last layer, different since it doesn't need ETM evaluation and w value update
     l = self.nlayer - 1
     nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1])))
@@ -203,7 +212,7 @@ class System:
     # Eta dyamics
     self.eta = (self.rho + self.lam) * self.eta - val
 
-    return omega, e, self.eta
+    return omega, e, self.eta, sec
 
   ## Customly defined activation function since sat doesn't exist on tensorflow
   def saturation_activation(self, value):
@@ -219,13 +228,14 @@ class System:
     states = []
     inputs = []
     events = []
+    sectors = []
     etas = []
 
     # Loop called at each step
     for i in range(nstep):
 
       # Input computation via NN controller, events are tracked
-      u, e, eta = self.forward(self.state, ETM, DYNAMIC)
+      u, e, eta, sec = self.forward(self.state, ETM, DYNAMIC)
       
       # Forward dynamics
       x = (self.A + self.B @ self.K) @ self.state.reshape(2,1) + self.B @ u.reshape(1, 1)
@@ -239,8 +249,9 @@ class System:
       inputs.append(u)
       events.append(e)
       etas.append(eta)
+      sectors.append(sec)
 
-    return np.array(states), np.array(inputs), np.array(events), etas
+    return np.array(states), np.array(inputs), np.array(events), np.array(etas), np.array(sectors)
   
 
 # Main execution
@@ -258,18 +269,34 @@ if __name__ == "__main__":
   inputs = []
   events = []
   etas = []
+  sectors = []
   lyap = []
 
   # Simulation parameters
-  x0 = np.array([np.pi/2, 0])
+  x0 = np.array([np.pi/4, 0.4])
   # In time it's nstep*s.dt = nstep * 0.02 s
-  nstep = 250
-  ETM = True
-  DYNAMIC = True
-  print_events = True
+  if len(sys.argv) > 1:
+    nstep = int(sys.argv[1])
+    if (int(sys.argv[2])):
+      ETM = True
+    else:
+      ETM = False
+    if (int(sys.argv[3])):
+      DYNAMIC = True
+    else:
+      DYNAMIC = False
+    if (int(sys.argv[4])):
+      print_events = True
+    else:
+      print_events = False
+  else:
+    nstep = 250
+    ETM = True
+    DYNAMIC = True
+    print_events = True
 
   # Call to simulation function of object System
-  states, inputs, events, etas = s.dynamic_loop(x0, nstep, ETM, DYNAMIC)
+  states, inputs, events, etas, sectors = s.dynamic_loop(x0, nstep, ETM, DYNAMIC)
 
   layer1_trigger = np.sum(events[:, 0]) / nstep * 100
   layer2_trigger = np.sum(events[:, 1]) / nstep * 100
@@ -299,32 +326,43 @@ if __name__ == "__main__":
   fig, axs = plt.subplots(2, 2)
   axs[0, 0].plot(time_grid, x - s.xstar[0])
   if print_events:
-    axs[0, 0].plot(time_grid, events[:, 1]*(x - s.xstar[0]).reshape(len(time_grid)), 'ro')
+    axs[0, 0].plot(time_grid, events[:, 1]*(x - s.xstar[0]).reshape(len(time_grid)), marker='o', markerfacecolor='none')
   axs[0, 0].set_title("Position")
-  axs[0, 0].set_xlabel("Time [s]")
+  axs[0, 0].set_xlabel("Time")
   axs[0, 0].set_ylabel("Position [rad]")
 
   axs[0, 1].plot(time_grid, v - s.xstar[1])
   if print_events:
-    axs[0, 1].plot(time_grid, events[:, 1]*(v - s.xstar[1]).reshape(len(time_grid)), 'ro')
+    axs[0, 1].plot(time_grid, events[:, 1]*(v - s.xstar[1]).reshape(len(time_grid)), marker='o', markerfacecolor='none')
   axs[0, 1].set_title("Velocity")
-  axs[0, 1].set_xlabel("Time [s]")
-  axs[0, 1].set_ylabel("Velocity [rad/s]")
+  axs[0, 1].set_xlabel("Time")
+  axs[0, 1].set_ylabel("Velocity")
 
   axs[1, 0].plot(time_grid, u)
   if print_events:
-    axs[1, 0].plot(time_grid, events[:, 1]*u, 'ro')
+    axs[1, 0].plot(time_grid, events[:, 1]*u, marker='o', markerfacecolor='none')
   axs[1, 0].set_title("Inputs")
-  axs[1, 0].set_xlabel("Time [s]")
+  axs[1, 0].set_xlabel("Time")
   axs[1, 0].set_ylabel("Control input")
 
-  if print_events:
-    axs[1, 1].plot(time_grid, events[:, 1]*lyap, 'ro')
   axs[1, 1].plot(time_grid, lyap)
+  if print_events:
+    axs[1, 1].plot(time_grid, events[:, 1]*lyap, marker='o', markerfacecolor='none')
   axs[1, 1].set_title("Lyapunov function")
 
   plt.show()
 
-  plt.plot(time_grid, etas)
-  plt.plot(time_grid, events[:, 1]*etas, 'ro')
+
+  fig, axs = plt.subplots(2)
+
+  axs[0].plot(time_grid, etas*s.rho, label='rho * eta')
+  axs[0].plot(time_grid[:-1], events[1:,0]*sectors[:-1, 0], marker='o', markerfacecolor='none', label='event')
+  axs[0].plot(time_grid, sectors[:,0], label='sector value layer 1')
+  axs[0].legend(loc='upper right')
+
+  axs[1].plot(time_grid, etas*s.rho, label='rho * eta')
+  axs[1].plot(time_grid[:-1], events[1:,1]*sectors[:-1, 1], marker='o', markerfacecolor='none', label='event')
+  axs[1].plot(time_grid, sectors[:,1], label='sector value layer 2')
+  axs[1].legend(loc='upper right')
+
   plt.show()
