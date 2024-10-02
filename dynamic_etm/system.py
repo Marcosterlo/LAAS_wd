@@ -62,7 +62,7 @@ class System:
     self.neurons = neurons.tolist()[0]
 
     # Gain matrix
-    self.K = np.array([-0.1, 0]).reshape(1,2)
+    self.K = np.array([[-0.1, 0]])
 
     # Closed loop matrices
     N = block_diag(*self.W) # Reminder for myself: * operator unpacks lists and pass it as singular arguments
@@ -273,7 +273,7 @@ if __name__ == "__main__":
   lyap = []
 
   # Simulation parameters
-  x0 = np.array([np.pi/4, 0.4])
+  x0 = np.array([np.pi/2, 0])
   # In time it's nstep*s.dt = nstep * 0.02 s
   if len(sys.argv) > 1:
     nstep = int(sys.argv[1])
@@ -301,8 +301,8 @@ if __name__ == "__main__":
   layer1_trigger = np.sum(events[:, 0]) / nstep * 100
   layer2_trigger = np.sum(events[:, 1]) / nstep * 100
 
-  print("Layer 1 has been triggered the " + str(layer1_trigger) + "% of times")
-  print("Layer 2 has been triggered the " + str(layer2_trigger) + "% of times")
+  print("Layer 1 has been triggered " + str(layer1_trigger) + "% of times")
+  print("Layer 2 has been triggered " + str(layer2_trigger) + "% of times")
   
   # Unpacking vectors
   x = states[:, 0]
@@ -330,6 +330,7 @@ if __name__ == "__main__":
   axs[0, 0].set_title("Position")
   axs[0, 0].set_xlabel("Time")
   axs[0, 0].set_ylabel("Position [rad]")
+  axs[0, 0].grid(True)
 
   axs[0, 1].plot(time_grid, v - s.xstar[1])
   if print_events:
@@ -337,6 +338,7 @@ if __name__ == "__main__":
   axs[0, 1].set_title("Velocity")
   axs[0, 1].set_xlabel("Time")
   axs[0, 1].set_ylabel("Velocity")
+  axs[0, 1].grid(True)
 
   axs[1, 0].plot(time_grid, u)
   if print_events:
@@ -344,25 +346,60 @@ if __name__ == "__main__":
   axs[1, 0].set_title("Inputs")
   axs[1, 0].set_xlabel("Time")
   axs[1, 0].set_ylabel("Control input")
+  axs[1, 0].grid(True)
 
   axs[1, 1].plot(time_grid, lyap)
   if print_events:
     axs[1, 1].plot(time_grid, events[:, 1]*lyap, marker='o', markerfacecolor='none')
   axs[1, 1].set_title("Lyapunov function")
+  axs[1, 1].grid(True)
 
   plt.show()
 
+  if DYNAMIC:
+    fig, axs = plt.subplots(2)
 
-  fig, axs = plt.subplots(2)
+    axs[0].plot(time_grid, etas*s.rho, label='rho * eta')
+    if print_events:
+      axs[0].plot(time_grid[:-1], events[1:,0]*sectors[:-1, 0], marker='o', markerfacecolor='none', label='event')
+    axs[0].plot(time_grid, sectors[:,0], label='sector value layer 1')
+    axs[0].legend(loc='upper right')
+    axs[0].grid(True)
 
-  axs[0].plot(time_grid, etas*s.rho, label='rho * eta')
-  axs[0].plot(time_grid[:-1], events[1:,0]*sectors[:-1, 0], marker='o', markerfacecolor='none', label='event')
-  axs[0].plot(time_grid, sectors[:,0], label='sector value layer 1')
-  axs[0].legend(loc='upper right')
+    axs[1].plot(time_grid, etas*s.rho, label='rho * eta')
+    if print_events:
+      axs[1].plot(time_grid[:-1], events[1:,1]*sectors[:-1, 1], marker='o', markerfacecolor='none', label='event')
+    axs[1].plot(time_grid, sectors[:,1], label='sector value layer 2')
+    axs[1].legend(loc='upper right')
+    axs[1].grid(True)
 
-  axs[1].plot(time_grid, etas*s.rho, label='rho * eta')
-  axs[1].plot(time_grid[:-1], events[1:,1]*sectors[:-1, 1], marker='o', markerfacecolor='none', label='event')
-  axs[1].plot(time_grid, sectors[:,1], label='sector value layer 2')
-  axs[1].legend(loc='upper right')
 
+    plt.show()
+
+  x1_vals = []
+  x2_vals = []
+  x11_vals = []
+  x21_vals = []
+
+  P0 = np.array([[0.2916, 0.0054], [0.0054, 0.0090]])
+
+  for i in range(100000):
+    x1 = np.random.uniform(-10, 10) - s.xstar[0]
+    x2 = np.random.uniform(-20, 20) - s.xstar[1]
+    vec = np.array([x1, x2])
+    if (vec.T @ P @ vec < 1):
+      x1_vals.append(x1)
+      x2_vals.append(x2)
+    if (vec.T @ P0 @ vec < 1):
+      x11_vals.append(x1)
+      x21_vals.append(x2)
+
+  plt.plot(x1_vals, x2_vals)
+  plt.plot(x11_vals, x21_vals)
+  plt.plot(x, v)
+  plt.xlabel('x1')
+  plt.ylabel('x2')
+  plt.title('ROA')
+  plt.grid(True)
+  plt.legend()
   plt.show()

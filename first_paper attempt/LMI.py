@@ -12,7 +12,6 @@ pbLMI = []
 # Matrix import
 A = s.A
 B = s.B
-K = s.K
 
 # NN parameters
 nphi = s.nphi
@@ -26,7 +25,7 @@ neurons = int(nphi / (nlayer - 1))
 # Creation of closed loop matrix N
 N = block_diag(*W) # Reminder for myself: * operator unpacks lists and pass it as singular arguments
 
-Nux = K
+Nux = N[nphi:, :nx]
 Nuw = N[nphi:, nx:]
 Nub = b[-1]
 
@@ -38,11 +37,6 @@ Nvb = np.concatenate((b[0], b[1]))
 def fake_zero(size):
     return 1e-3 * np.eye(size)
 
-# rho and lambda for beta term
-r = 0.42
-l = 1 - r - 0.1
-beta = (1 - l) / r
-
 # Variables for LMI
 P = cp.Variable((nx, nx), symmetric=True)
 constraints = [P >> 1e-3 * fake_zero(nx)]
@@ -51,45 +45,60 @@ T_val = cp.Variable(nphi)
 T = cp.diag(T_val)
 constraints += [T >> fake_zero(T.shape[0])]
 
+rho = cp.Variable()
+constraints += [rho >> fake_zero(1)]
+
+qdelta1 = cp.Variable((neurons, neurons))
+qdelta2 = cp.Variable((neurons, neurons))
+Qdelta = cp.bmat([
+    [cp.hstack([qdelta1, np.zeros((neurons, neurons))])],
+    [cp.hstack([np.zeros((neurons, neurons)), qdelta2])]
+])
+constraints += [Qdelta << np.eye(Qdelta.shape[0])]
+
+qw1 = cp.Variable((neurons, neurons))
+qw2 = cp.Variable((neurons, neurons))
+Qw = cp.bmat([
+    [cp.hstack([qw1, np.zeros((neurons, neurons))])],
+    [cp.hstack([np.zeros((neurons, neurons)), qw2])]
+])
+constraints += [Qw >> rho * np.eye(Qw.shape[0])]
+
 Z1 = cp.Variable((neurons, nx))
 Z2 = cp.Variable((neurons, nx))
 Z = cp.vstack([Z1, Z2])
 
-rho = cp.Variable()
-constraints += [rho >> fake_zero(1)]
-
 # Fixed parameters
 alpha = 9*1e-4
 P0 = np.array([[0.2916, 0.0054], [0.0054, 0.0090]])
-P0 = np.array([[0.3024, 0.0122], [0.0122, 0.0154]])
 vbar = 1
 
 # Matrix creation
 R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
 Rw = Nux + Nuw @ R @ Nvx
 Rb = Nuw @ R @ Nvb + Nub
-Abar = A + B @ K + B @ Nuw @ R @ Nvx
 
 # The fastes way I found to create big matrices was to create lines and stack them together
-Rline1 = np.concatenate((np.eye(nx), np.zeros((2, 64))), axis=1)
-Rline2 = np.concatenate((R @ Nvx, np.eye(nphi) - R), axis=1)
-Rline3 = np.concatenate((np.zeros((nphi, nx)), np.eye(nphi)), axis=1)
-Rphi = np.concatenate((Rline1, Rline2, Rline3), axis=0)
+Rphi = cp.bmat([
+    [cp.hstack([np.eye(nx), np.zeros((nx, nphi)), np.zeros((nx, nphi))])],
+    [cp.hstack([Nvx, Nvw, Nvw])],
+    [cp.hstack([np.zeros((nphi, nx)), np.eye(nphi), np.zeros((nphi, nphi))])]
+])
 
-matline1 = np.concatenate((np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi))), axis=1)
-matline2 = cp.hstack([Z, -T, T])
-mat = cp.vstack([matline1, matline2])
+mat = cp.bmat([
+    [cp.hstack([np.zeros((nx, nphi)), -Z.T, Z.T])],
+    [cp.hstack([-Z, np.zeros((nphi, nphi)), T])],
+    [cp.hstack([Z, T.T, -2*T])]
+])
 
-M = cp.vstack([Abar.T, (-B @ Nuw @ R).T]) @ P @ cp.hstack([Abar, -B @ Nuw @ R]) - cp.bmat([
-    [P, np.zeros((nx, nphi))],
-    [np.zeros((nphi, nx)), np.zeros((nphi, nphi))]
-]) + beta * (- Rphi.T @ mat.T - mat @ Rphi)
+M = cp.bmat([
+    [cp.hstack([(A + B @ Nux).T @ P @ (A + B @ Nux) - P, (A + B @ Nux).T @ P @ B @ Nuw, (A + B @ Nux).T @ P @ B @ Nuw])],
+    [cp.hstack([((A + B @ Nux).T @ P @ B @ Nuw).T, (B @ Nuw).T @ P @ B @ Nuw + Qw, (B @ Nuw).T @ P @ B @ Nuw])],
+    [cp.hstack([((A + B @ Nux).T @ P @ B @ Nuw).T, ((B @ Nuw).T @ P @ B @ Nuw).T, (B @ Nuw).T @ P @ B @ Nuw - Qdelta])]
+    ]) + Rphi.T @ mat @ Rphi
  
 # Definite negative M constraint for stability
 constraints += [M << -fake_zero(M.shape[0])]
-
-# Condition to reach thhe lmimits of feasibility
-constraints += [M + rho * np.eye(M.shape[0]) >> fake_zero(M.shape[0])]
 
 # Inclusion constraint
 inclusion = cp.bmat([
@@ -111,7 +120,7 @@ for i in range(nlayer-1):
         constraints += [ellip >> 0]
 
 # Optimization condition
-objective = cp.Minimize(rho)
+objective = cp.Minimize(-rho)
 
 # Problem definition
 prob = cp.Problem(objective, constraints)

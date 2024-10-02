@@ -97,9 +97,10 @@ for i in range(nlayer-1):
     for k in range(neurons):
         Z_el = Z[i*neurons + k]
         T_el = T[i*neurons + k, i*neurons + k]
+        vcap = np.min([np.abs(-vbar -s.wstar[i][k][0]), np.abs(vbar - s.wstar[i][k][0])], axis=0)
         ellip = cp.bmat([
             [P, cp.reshape(Z_el, (2,1))],
-            [cp.reshape(Z_el, (1,2)), cp.reshape(2*alpha*T_el - alpha**2*vbar**(-2), (1, 1))] 
+            [cp.reshape(Z_el, (1,2)), cp.reshape(2*alpha*T_el - alpha**2*vcap**(-2), (1, 1))] 
         ])
         constraints += [ellip >> 0]
 
@@ -120,8 +121,8 @@ if prob.status not in  ["infeasible", "ubounded"]:
     print("Max T eigenvalue: ", np.max(np.linalg.eigvals(T.value)))
 
     # Saving matrices to npy file
-    # np.save("P_mat", P.value)
-    # np.save("Z_mat", Z.value)
-    # np.save("T_mat", T.value)
+    np.save("P_mat", P.value)
+    np.save("Z_mat", Z.value)
+    np.save("T_mat", T.value)
 else:
     print("=========== Unfeasible problem =============")
