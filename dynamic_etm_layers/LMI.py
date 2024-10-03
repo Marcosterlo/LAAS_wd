@@ -38,11 +38,6 @@ Nvb = np.concatenate((b[0], b[1]))
 def fake_zero(size):
     return 1e-3 * np.eye(size)
 
-# rho and lambda for beta term
-r = 0.42
-l = 1 - r - 0.1
-beta = (1 - l) / r
-
 # Variables for LMI
 P = cp.Variable((nx, nx), symmetric=True)
 constraints = [P >> 1e-3 * fake_zero(nx)]
@@ -68,27 +63,6 @@ R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
 Rw = Nux + Nuw @ R @ Nvx
 Rb = Nuw @ R @ Nvb + Nub
 Abar = A + B @ K + B @ Nuw @ R @ Nvx
-
-# The fastes way I found to create big matrices was to create lines and stack them together
-Rline1 = np.concatenate((np.eye(nx), np.zeros((2, 64))), axis=1)
-Rline2 = np.concatenate((R @ Nvx, np.eye(nphi) - R), axis=1)
-Rline3 = np.concatenate((np.zeros((nphi, nx)), np.eye(nphi)), axis=1)
-Rphi = np.concatenate((Rline1, Rline2, Rline3), axis=0)
-
-matline1 = np.concatenate((np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi))), axis=1)
-matline2 = cp.hstack([Z, -T, T])
-mat = cp.vstack([matline1, matline2])
-
-M = cp.vstack([Abar.T, (-B @ Nuw @ R).T]) @ P @ cp.hstack([Abar, -B @ Nuw @ R]) - cp.bmat([
-    [P, np.zeros((nx, nphi))],
-    [np.zeros((nphi, nx)), np.zeros((nphi, nphi))]
-]) + beta * (- Rphi.T @ mat.T - mat @ Rphi)
- 
-# Definite negative M constraint for stability
-constraints += [M << -fake_zero(M.shape[0])]
-
-# Condition to reach thhe lmimits of feasibility
-constraints += [M + rho * np.eye(M.shape[0]) >> fake_zero(M.shape[0])]
 
 # Inclusion constraint
 inclusion = cp.bmat([
