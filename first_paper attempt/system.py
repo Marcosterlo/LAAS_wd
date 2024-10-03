@@ -60,12 +60,9 @@ class System:
     neurons = 32*np.ones((1,2)).astype(np.int16)
     self.neurons = neurons.tolist()[0]
 
-    # Gain matrix
-    self.K = np.array([[-0.1, 0]])
-
     # Closed loop matrices
     N = block_diag(*self.W) # Reminder for myself: * operator unpacks lists and pass it as singular arguments
-    Nux = self.K
+    Nux = N[self.nphi:, :self.nx]
     Nuw = N[self.nphi:, self.nx:]
     Nub = self.b[-1]
     Nvx = N[:self.nphi, :self.nx]
@@ -85,12 +82,6 @@ class System:
     indeces = [self.neurons[0]]
     self.wstar = np.split(wstar, indeces)
 
-    # Std of random state noise
-    self.stdx = 0.01
-
-    # Std of random input noise
-    self.stdu = 0.01
-   
     # Number of layers of the FFNN (+1 to include last layer for input computation)
     self.nlayer = 3
 
@@ -113,19 +104,17 @@ class System:
 
     self.layers = [self.layer1, self.layer2, self.layer3]
 
-    # T and Z matrices import from LMI solution with relative path
-    T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_mat.npy")
-    Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_mat.npy")
-    T = np.load(T_mat_name)
-    Z = np.load(Z_mat_name)
-    # I compose G matrix following the paper
-    G = np.linalg.inv(T) @ Z
-    # I split it into blocks per each layer
-    self.G = np.split(G, indeces)
-    self.T = []
-    # I split block diagonal matrix T into blocks for each layer
-    for i in range(self.nlayer -1):
-      self.T.append(T[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
+    # Qw and Qdelta matrices import from LMI solution with relative path
+    Qw_mat_name = os.path.abspath(__file__ + "/../mat-weights/Qw_mat.npy")
+    Qdelta_mat_name = os.path.abspath(__file__ + "/../mat-weights/Qdelta_mat.npy")
+    Qw_tot = np.load(Qw_mat_name)
+    Qdelta_tot = np.load(Qdelta_mat_name)
+    self.Qw = []
+    self.Qdelta = []
+    for i in range(self.nlayer - 1):
+      self.Qw.append(Qw_tot[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
+      self.Qdelta.append(Qdelta_tot[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
+
 
     ## Class variable
     self.state = None
@@ -145,39 +134,42 @@ class System:
     # Initialization of empty vector to store events
     e = np.zeros(self.nlayer - 1)
 
+    break_cascade = False
+
     # Loop for each layer
     for l in range(self.nlayer - 1):
-      
-      # If we are in the fist layer the input is initial x, otherwise it is the omega of the previous layer
-      if l == 0:
-        # Detach, numpy and reshape are used to cast to np array of the correct shape in order to hav
-        nu = self.layers[l](torch.tensor(x)).detach().numpy().reshape(self.W[l].shape[0], 1)
-      else:
-        nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1]))).detach().numpy().reshape(self.W[l].shape[0], 1)
+      if not break_cascade: 
+        # If we are in the fist layer the input is initial x, otherwise it is the omega of the previous layer
+        if l == 0:
+          # Detach, numpy and reshape are used to cast to np array of the correct shape in order to hav
+          nu = self.layers[l](torch.tensor(x)).detach().numpy().reshape(self.W[l].shape[0], 1)
+        else:
+          nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1]))).detach().numpy().reshape(self.W[l].shape[0], 1)
 
-      # ETM evaluation
-      vec1 = (nu - self.last_w[l]).T
-      T = self.T[l]
-      vec2 = (self.G[l] @ (x - self.xstar).reshape(self.nx, 1) - (self.last_w[l] - self.wstar[l]))
+        omega = self.saturation_activation(torch.tensor(nu)).detach().numpy().reshape(self.W[l].shape[0], 1)
 
-      # Flag to enbale/disable ETM
-      if ETM:
-        check = vec1 @ T @ vec2 > 0
-      else:
-        check = True
+        # ETM evaluation
+        vec1 = self.last_w[l] - omega
+        vec2 = omega - self.wstar[l]
 
-      if check:
-        # If there is an event we compute the output of the layer with the non linear activation function
-        omega = self.saturation_activation(torch.tensor(nu))
-        # We substitute last computed value
-        self.last_w[l] = omega.detach().numpy()
-        e[l] = 1
-      else:
-        # If no event occurs we feed the next layer the last stored output
-        omega = self.last_w[l]
+        # Flag to enbale/disable ETM
+        if ETM:
+          check = vec1.T @ self.Qdelta[l] @ vec1 - vec2.T @ self.Qw[l] @ vec2 > 0
+        else:
+          check = True
+
+        if check:
+          self.last_w[l] = omega
+          e[l] = 1
+        else:
+          # If no event occurs we feed the next layer the last stored output
+          break_cascade = True
+          omega = self.last_w[l]
 
     # Last layer, different since it doesn't need ETM evaluation and w value update
     l = self.nlayer - 1
+    if break_cascade:
+      omega = self.last_w[-1]
     nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1])))
     omega = self.saturation_activation(nu).detach().numpy().reshape(self.W[l].shape[0], 1)
 
@@ -205,7 +197,7 @@ class System:
       u, e = self.forward(self.state, ETM)
       
       # Forward dynamics
-      x = (self.A + self.B @ self.K) @ self.state.reshape(2,1) + self.B @ u.reshape(1, 1)
+      x = self.A  @ self.state.reshape(2,1) + self.B @ u.reshape(1, 1)
 
       # Optional noise addition
       # self.state = x + (np.random.randn(self.nx)*self.stdx).reshape(2, 1)
@@ -236,7 +228,8 @@ if __name__ == "__main__":
   lyap = []
 
   # Simulation parameters
-  x0 = np.array([np.pi/2, 0])
+  x0 = np.array([np.pi*3/8, -5])
+  x0 = np.array([-0.4274, -7.7563])*0.7
   # In time it's nstep*s.dt = nstep * 0.02 s
   nstep = 500
   ETM = True
@@ -295,7 +288,7 @@ if __name__ == "__main__":
 
   x1_vals = []
   x2_vals = []
-  P0 = np.array([[0.2916, 0.0054], [0.0054, 0.0090]])
+  P0 = np.array([[0.3024, 0.0122], [0.0122, 0.0154]])
   x11_vals = []
   x21_vals = []
 
@@ -310,9 +303,9 @@ if __name__ == "__main__":
       x11_vals.append(x1)
       x21_vals.append(x2)
 
-  plt.plot(x1_vals, x2_vals)
-  plt.plot(x11_vals, x21_vals)
-  plt.plot(x[0], v[0], marker='o')
+  plt.plot(x1_vals, x2_vals, marker='o')
+  plt.plot(x11_vals, x21_vals, marker='o')
+  plt.plot(x, v)
   plt.xlabel('x1')
   plt.ylabel('x2')
   plt.title('ROA')

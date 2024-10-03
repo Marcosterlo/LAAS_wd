@@ -70,7 +70,7 @@ Z = cp.vstack([Z1, Z2])
 
 # Fixed parameters
 alpha = 9*1e-4
-P0 = np.array([[0.2916, 0.0054], [0.0054, 0.0090]])
+P0 = np.array([[0.3024, 0.0122], [0.0122, 0.0154]])
 vbar = 1
 
 # Matrix creation
@@ -86,7 +86,7 @@ Rphi = cp.bmat([
 ])
 
 mat = cp.bmat([
-    [cp.hstack([np.zeros((nx, nphi)), -Z.T, Z.T])],
+    [cp.hstack([np.zeros((nx, nx)), -Z.T, Z.T])],
     [cp.hstack([-Z, np.zeros((nphi, nphi)), T])],
     [cp.hstack([Z, T.T, -2*T])]
 ])
@@ -137,7 +137,5 @@ if prob.status not in  ["infeasible", "ubounded"]:
 
     # Saving matrices to npy file
     np.save("P_mat", P.value)
-    np.save("Z_mat", Z.value)
-    np.save("T_mat", T.value)
 else:
     print("=========== Unfeasible problem =============")
