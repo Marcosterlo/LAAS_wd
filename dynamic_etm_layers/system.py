@@ -115,8 +115,8 @@ class System:
     self.layers = [self.layer1, self.layer2, self.layer3]
 
     # T and Z matrices import from LMI solution with relative path
-    T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_mat.npy")
-    Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_mat.npy")
+    T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
+    Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
     T = np.load(T_mat_name)
     Z = np.load(Z_mat_name)
     # I compose G matrix following the paper
@@ -138,24 +138,21 @@ class System:
       # Reshape of wstar vector to make it compatible with last_w
       self.wstar[i] = self.wstar[i].reshape(len(self.wstar[i]), 1)
 
-    self.eta = 1
-    self.rho = 0.42
-    self.lam = 1 - self.rho - 0.1
+    self.eta = np.ones(self.nlayer - 1)
+    self.rho = np.array([0.6, 0.4])
+    self.lam = np.array([0.3, 0.5])
 
     ## Function that predicts the input
   def forward(self, x, ETM, DYNAMIC):
 
     # Variable to store sector values
-    val = 0
+    val = np.zeros(self.nlayer - 1)
 
     # Reshape fo state according to NN dimensions
     x = x.reshape(1, self.W[0].shape[1])
     
     # Initialization of empty vector to store events
     e = np.zeros(self.nlayer - 1)
-
-    # Initialization of empty vector to store sector values
-    sec = np.zeros(self.nlayer - 1)
 
     # Loop for each layer
     for l in range(self.nlayer - 1):
@@ -176,7 +173,7 @@ class System:
       # Flag to enbale/disable ETM
       if ETM:
         if DYNAMIC:
-          check = vec1 @ T @ vec2 > self.rho * self.eta
+          check = vec1 @ T @ vec2 > self.rho[l] * self.eta[l]
         else:
           check = vec1 @ T @ vec2 > 0
       else:
@@ -194,15 +191,12 @@ class System:
         vec1 = (nu - omega).T
         T = self.T[l]
         vec2 = (self.G[l] @ (x - self.xstar).reshape(self.nx, 1) - (omega - self.wstar[l]))
-        val += (vec1 @ T @ vec2)[0][0]
+        val[l] = (vec1 @ T @ vec2)[0][0]
         
       else:
-        val += (vec1 @ T @ vec2)[0][0]
+        val[l] = (vec1 @ T @ vec2)[0][0]
         # If no event occurs we feed the next layer the last stored output
         omega = self.last_w[l]
-
-      sec[l] = (vec1 @ T @ vec2)[0][0]
-
 
     # Last layer, different since it doesn't need ETM evaluation and w value update
     l = self.nlayer - 1
@@ -210,9 +204,10 @@ class System:
     omega = self.saturation_activation(nu).detach().numpy().reshape(self.W[l].shape[0], 1)
 
     # Eta dyamics
-    self.eta = (self.rho + self.lam) * self.eta - val
+    for i in range(self.nlayer - 1):
+      self.eta[i] = (self.rho[i] + self.lam[i]) * self.eta[i] - val[i]
 
-    return omega, e, self.eta, sec
+    return omega, e, self.eta
 
   ## Customly defined activation function since sat doesn't exist on tensorflow
   def saturation_activation(self, value):
@@ -228,14 +223,14 @@ class System:
     states = []
     inputs = []
     events = []
-    sectors = []
-    etas = []
+    etas1 = []
+    etas2 = []
 
     # Loop called at each step
     for i in range(nstep):
 
       # Input computation via NN controller, events are tracked
-      u, e, eta, sec = self.forward(self.state, ETM, DYNAMIC)
+      u, e, eta = self.forward(self.state, ETM, DYNAMIC)
       
       # Forward dynamics
       x = (self.A + self.B @ self.K) @ self.state.reshape(2,1) + self.B @ u.reshape(1, 1)
@@ -248,10 +243,10 @@ class System:
       states.append(x)
       inputs.append(u)
       events.append(e)
-      etas.append(eta)
-      sectors.append(sec)
+      etas1.append(eta[0])
+      etas2.append(eta[1])
 
-    return np.array(states), np.array(inputs), np.array(events), np.array(etas), np.array(sectors)
+    return np.array(states), np.array(inputs), np.array(events), np.array(etas1), np.array(etas2)
   
 
 # Main execution
@@ -261,19 +256,19 @@ if __name__ == "__main__":
   s = System()
 
   # Import of P matrix from LMI solution
-  P_mat_name = os.path.abspath(__file__ + "/../mat-weights/P_mat.npy")
+  P_mat_name = os.path.abspath(__file__ + "/../mat-weights/P_try.npy")
   P = np.load(P_mat_name)
   
   # Empty vectors initialization
   states = []
   inputs = []
   events = []
-  etas = []
-  sectors = []
+  etas1 = []
+  etas2 = []
   lyap = []
 
   # Simulation parameters
-  x0 = np.array([np.pi/2, 0])
+  x0 = np.array([np.pi/4, 1])
   # In time it's nstep*s.dt = nstep * 0.02 s
   if len(sys.argv) > 1:
     nstep = int(sys.argv[1])
@@ -296,7 +291,7 @@ if __name__ == "__main__":
     print_events = True
 
   # Call to simulation function of object System
-  states, inputs, events, etas, sectors = s.dynamic_loop(x0, nstep, ETM, DYNAMIC)
+  states, inputs, events, etas1, etas2 = s.dynamic_loop(x0, nstep, ETM, DYNAMIC)
 
   layer1_trigger = np.sum(events[:, 0]) / nstep * 100
   layer2_trigger = np.sum(events[:, 1]) / nstep * 100
@@ -312,7 +307,7 @@ if __name__ == "__main__":
   
   # Creation of lyapunov function vector
   for i in range(nstep):
-    lyap.append(((states[i, :] - s.xstar).T @ P @ (states[i, :] - s.xstar))[0][0] + etas[i])
+    lyap.append(((states[i, :] - s.xstar).T @ P @ (states[i, :] - s.xstar))[0][0] + 2*etas1[i] + 2*etas2[i])
 
   # Conversion of non events to None for ease of plotting
   for i, event in enumerate(events):
@@ -356,26 +351,6 @@ if __name__ == "__main__":
 
   plt.show()
 
-  if DYNAMIC:
-    fig, axs = plt.subplots(2)
-
-    axs[0].plot(time_grid, etas*s.rho, label='rho * eta')
-    if print_events:
-      axs[0].plot(time_grid[:-1], events[1:,0]*sectors[:-1, 0], marker='o', markerfacecolor='none', label='event')
-    axs[0].plot(time_grid, sectors[:,0], label='sector value layer 1')
-    axs[0].legend(loc='upper right')
-    axs[0].grid(True)
-
-    axs[1].plot(time_grid, etas*s.rho, label='rho * eta')
-    if print_events:
-      axs[1].plot(time_grid[:-1], events[1:,1]*sectors[:-1, 1], marker='o', markerfacecolor='none', label='event')
-    axs[1].plot(time_grid, sectors[:,1], label='sector value layer 2')
-    axs[1].legend(loc='upper right')
-    axs[1].grid(True)
-
-
-    plt.show()
-
   x1_vals = []
   x2_vals = []
   x11_vals = []
@@ -402,4 +377,8 @@ if __name__ == "__main__":
   plt.title('ROA')
   plt.grid(True)
   plt.legend()
+  plt.show()
+
+  plt.plot(time_grid, etas1)
+  plt.plot(time_grid, etas2)
   plt.show()

@@ -83,6 +83,42 @@ for i in range(nlayer-1):
         ])
         constraints += [ellip >> 0]
 
+Rphi = cp.bmat([
+    [np.eye(nx), np.zeros((nx, nphi))],
+    [R @ Nvx, np.eye(nphi) - R],
+    [np.zeros((nphi, nx)), np.eye(nphi)]
+])
+
+decay_rate_eta_1 = 0.9
+r1 = 0.6
+l1 = decay_rate_eta_1 - r1
+gamma1 = (l1 - 1) / r1
+gamma1 = np.ones(neurons)*gamma1
+
+decay_rate_eta_2 = 0.9
+r2 = 0.4
+l2 = decay_rate_eta_2 - r2
+gamma2 = (l2 - 1) / r2
+gamma2 = np.ones(neurons)*gamma2
+
+gammavec = np.concatenate([gamma1, gamma2], axis=0)
+
+gamma = cp.diag(gammavec)
+
+mat = cp.bmat([
+    [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi))],
+    [gamma @ Z, -gamma @ T, gamma @ T]
+])
+
+M = cp.vstack([Abar.T, (-B @ Nuw @ R).T]) @ P @ cp.hstack([Abar, -B @ Nuw @ R]) - cp.bmat([
+    [P, np.zeros((nx, nphi))],
+    [np.zeros((nphi, nx)), np.zeros((nphi, nphi))]
+]) + Rphi.T @ mat.T + mat @ Rphi
+
+
+constraints += [M << -fake_zero(M.shape[0])]
+constraints += [M + rho * np.eye(M.shape[0]) >> fake_zero(M.shape[0])]
+
 # Optimization condition
 objective = cp.Minimize(rho)
 
@@ -100,8 +136,8 @@ if prob.status not in  ["infeasible", "ubounded"]:
     print("Max T eigenvalue: ", np.max(np.linalg.eigvals(T.value)))
 
     # Saving matrices to npy file
-    np.save("P_mat", P.value)
-    np.save("Z_mat", Z.value)
-    np.save("T_mat", T.value)
+    # np.save("P_mat", P.value)
+    # np.save("Z_mat", Z.value)
+    # np.save("T_mat", T.value)
 else:
     print("=========== Unfeasible problem =============")
