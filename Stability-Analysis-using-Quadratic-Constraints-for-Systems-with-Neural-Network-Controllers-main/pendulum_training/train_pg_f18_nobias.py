@@ -5,7 +5,8 @@ Adapted for CS294-112 Fall 2018 by Michael Chang and Soroush Nasiriany
 """
 import numpy as np
 # import tensorflow as tf
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 import gym
 import logz
 import os
