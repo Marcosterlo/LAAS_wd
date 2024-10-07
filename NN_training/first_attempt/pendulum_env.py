@@ -1,7 +1,6 @@
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-from gymnasium.utils import seeding
 
 class Pendulum_env(gym.Env):
 
@@ -14,8 +13,7 @@ class Pendulum_env(gym.Env):
         self.mu = 0.05 # fric coeff
         self.dt = 0.02 # sampling period
 
-        # Max torque computed as m*g*l*sin(pi/3)
-        self.max_torque = 2
+        self.max_torque = 1
         self.max_speed = 8.0
 
         self.nx = 2
@@ -24,8 +22,7 @@ class Pendulum_env(gym.Env):
         self.time = 0
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.nu,))
-        xmax = np.array([np.pi/2, self.max_speed])
-        self.observation_space = spaces.Box(low=-xmax, high=xmax, shape=(self.nx,))
+        self.observation_space = spaces.Box(low=-2*np.pi, high=2*np.pi, shape=(self.nx,))
 
         self.last_u = 0
 
@@ -62,10 +59,10 @@ class Pendulum_env(gym.Env):
         return self.get_obs(), -costs, terminated, terminated, {}
 
     def reset(self, seed=None):
-        high = np.array([np.pi, 5])
-        self.state = self.np_random.uniform(low=-high, high=high).astype(np.float32)
+        xlim = np.pi/2
+        vlim = 2
+        self.state = np.array([np.random.uniform(-xlim, xlim), np.random.uniform(-vlim, vlim)]).astype(np.float32)
         self.time = 0
-
         return (self.get_obs(), {})
     
     def get_obs(self):
