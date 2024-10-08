@@ -121,8 +121,8 @@ if prob.status not in  ["infeasible", "ubounded"]:
     print("Max T eigenvalue: ", np.max(np.linalg.eigvals(T.value)))
 
     # Saving matrices to npy file
-    np.save("P_mat", P.value)
-    np.save("Z_mat", Z.value)
-    np.save("T_mat", T.value)
+    # np.save("P_mat", P.value)
+    # np.save("Z_mat", Z.value)
+    # np.save("T_mat", T.value)
 else:
     print("=========== Unfeasible problem =============")

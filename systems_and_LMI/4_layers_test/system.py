@@ -4,7 +4,9 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 from scipy.linalg import block_diag
 import os
-import sys
+import warnings
+
+warnings.filterwarnings('ignore')
 
 class System:
   
@@ -47,13 +49,13 @@ class System:
     W4 = np.loadtxt(W4_name, delimiter=',')
     W5_name = os.path.abspath(__file__ + "/../4_layers/W5.csv")
     W5 = np.loadtxt(W5_name, delimiter=',')
-    W5 = W5.reshape(len(W5), self.nu)
+    W5 = W5.reshape(self.nu, len(W5))
 
     # Vector of weigts
-    self.W = [W1.T, W2.T, W3.T, W4.T, W5.T]
+    self.W = [W1, W2, W3, W4, W5]
 
     # Number of neurons
-    self.nphi = W1.shape[1] + W2.shape[1] + W3.shape[1] + W4.shape[1]
+    self.nphi = W1.shape[0] + W2.shape[0] + W3.shape[0] + W4.shape[0]
     
     # Bias import of trained FFNN
     b1_name = os.path.abspath(__file__ + "/../4_layers/b1.csv")
@@ -93,12 +95,12 @@ class System:
     N = block_diag(*self.W) # Reminder for myself: * operator unpacks lists and pass it as singular arguments
     Nux = self.K
     Nuw = N[-self.nu:, self.nx:]
-    Nub = self.b[-1].reshape(1, 1)
+    Nub = self.b[-1].reshape(self.nu, self.nu)
     Nvx = N[:-self.nu, :self.nx]
     Nvw = N[:-self.nu, self.nx:]
-    Nvb = np.array([[self.b[0]], [self.b[1]], [self.b[2]], [self.b[3]]]).reshape(128, 1)
+    Nvb = np.array([[self.b[0]], [self.b[1]], [self.b[2]], [self.b[3]]]).reshape(self.nphi, self.nu)
 
-    self.test = [Nux, Nuw, Nub, Nvx, Nvw, Nvb]
+    self.N = [Nux, Nuw, Nub, Nvx, Nvw, Nvb]
 
     # Auxiliary matrices
     R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
@@ -125,7 +127,7 @@ class System:
     nu = self.saturation_activation(self.layers[1](nu))
     nu = self.saturation_activation(self.layers[2](nu))
     nu = self.saturation_activation(self.layers[3](nu))
-    nu = self.saturation_activation(self.layers[4](nu)).detach().numpy()
+    nu = self.layers[4](nu).detach().numpy()
 
     return nu
 
@@ -168,31 +170,77 @@ if __name__ == "__main__":
 
   # Systam object creation
   s = System()
-  
-  # Empty vectors initialization
-  states = []
-  inputs = []
 
-  # Simulation parameters
-  x0 = np.array([0.1, 0.1])
-  nstep = 300
+  check_lyap = True
 
-  # Call to simulation function of object System
-  states, inputs = s.dynamic_loop(x0, nstep)
+  if check_lyap:
+    P = np.load('./4_layers/P_mat.npy')
 
-  # Unpacking vectors
-  x = states[:, 0]
-  v = states[:, 1]
-  u = inputs.reshape(len(inputs))
-  time_grid = np.linspace(0, nstep * s.dt, nstep)
-  
-  ## Plotting
-  
-  fig, axs = plt.subplots(2)
-  axs[0].plot(time_grid, x - s.xstar[0])
-  axs[0].grid(True)
+  for i in range(5):
+    
+    # Empty vectors initialization
+    states = []
+    inputs = []
+    if check_lyap:
+      lyap = []
 
-  axs[1].plot(time_grid, v - s.xstar[1])
-  axs[1].grid(True)
+    # Simulation parameters
+    if check_lyap:
+      not_in_ellipsoid = True
+      while not_in_ellipsoid:
+        x1 = np.random.uniform(-np.pi/2, np.pi/2)
+        x2 = np.random.uniform(-5, 5)
+        x0 = np.array([x1, x2])
+        if (x0.T @ P @ x0 < 1):
+          print(x0.T @ P @ x0)
+          not_in_ellipsoid = False
+    else:
+        x1 = np.random.uniform(-np.pi/2, np.pi/2)
+        x2 = np.random.uniform(-5, 5)
+        x0 = np.array([x1, x2])
 
-  plt.show()
+    x1_deg = x1/np.pi*180
+    print(f"Initial state: position: {x1_deg:.2f}°, speed: {x2:.2f} [rad/s]")
+
+    nstep = 300
+    # Call to simulation function of object System
+    s.state = None
+    states, inputs = s.dynamic_loop(x0, nstep)
+
+    # Unpacking vectors
+    x = states[:, 0]
+    v = states[:, 1]
+    u = inputs.reshape(len(inputs))
+    time_grid = np.linspace(0, nstep * s.dt, nstep)
+
+    if check_lyap:
+      for i in range(nstep):
+        lyap.append((states[i] - s.xstar).T @ P @ (states[i] - s.xstar))
+      lyap = np.array(lyap).reshape(nstep)
+    
+    ## Plotting
+    
+    if check_lyap:
+      fig, axs = plt.subplots(4)
+    else:
+      fig, axs = plt.subplots(3)
+
+    axs[0].plot(time_grid, x - s.xstar[0])
+    axs[0].set_ylabel('x1')
+    axs[0].grid(True)
+
+    axs[1].plot(time_grid, v - s.xstar[1])
+    axs[1].set_ylabel('x2')
+    axs[1].grid(True)
+
+    axs[2].plot(time_grid, u)
+    axs[2].set_ylabel('u')
+    axs[2].grid(True)
+
+    if check_lyap:
+      axs[3].plot(time_grid, lyap)
+      axs[3].set_ylabel('lyap')
+      axs[3].grid(True)
+
+    plt.show()
+

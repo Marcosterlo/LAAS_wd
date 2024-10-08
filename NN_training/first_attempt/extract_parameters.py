@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     weight_dir = './csv/'
 
-    model = PPO.load(args.model_name + '.zip')
+    model = PPO.load(args.model_name)
     policy = model.policy
 
     highest_num = 0

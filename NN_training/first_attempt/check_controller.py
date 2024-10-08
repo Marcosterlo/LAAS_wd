@@ -1,12 +1,17 @@
+import argparse
 from stable_baselines3 import PPO
 from pendulum_env import Pendulum_env
 import numpy as np
 import matplotlib.pyplot as plt
 
 env = Pendulum_env()
-model = PPO.load('test.zip')
 
-nstep = 3000
+parser = argparse.ArgumentParser()
+parser.add_argument('--model_name', type=str)
+args = parser.parse_args()
+model = PPO.load(args.model_name)
+
+nstep = 2000
 state = []
 u = []
 

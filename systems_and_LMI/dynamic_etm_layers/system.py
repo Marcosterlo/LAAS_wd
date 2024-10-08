@@ -201,7 +201,7 @@ class System:
     # Last layer, different since it doesn't need ETM evaluation and w value update
     l = self.nlayer - 1
     nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1])))
-    omega = self.saturation_activation(nu).detach().numpy().reshape(self.W[l].shape[0], 1)
+    omega = nu.detach().numpy().reshape(self.W[l].shape[0], 1)
 
     # Eta dyamics
     for i in range(self.nlayer - 1):

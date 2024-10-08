@@ -171,7 +171,7 @@ class System:
     if break_cascade:
       omega = self.last_w[-1]
     nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1])))
-    omega = self.saturation_activation(nu).detach().numpy().reshape(self.W[l].shape[0], 1)
+    omega = nu.detach().numpy().reshape(self.W[l].shape[0], 1)
 
     return omega, e
 

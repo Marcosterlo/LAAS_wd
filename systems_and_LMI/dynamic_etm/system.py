@@ -207,7 +207,7 @@ class System:
     # Last layer, different since it doesn't need ETM evaluation and w value update
     l = self.nlayer - 1
     nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1])))
-    omega = self.saturation_activation(nu).detach().numpy().reshape(self.W[l].shape[0], 1)
+    omega = nu.detach().numpy().reshape(self.W[l].shape[0], 1)
 
     # Eta dyamics
     self.eta = (self.rho + self.lam) * self.eta - val
@@ -273,7 +273,7 @@ if __name__ == "__main__":
   lyap = []
 
   # Simulation parameters
-  x0 = np.array([np.pi/2, 0])
+  x0 = np.array([-1.8341, -6.9559])
   # In time it's nstep*s.dt = nstep * 0.02 s
   if len(sys.argv) > 1:
     nstep = int(sys.argv[1])

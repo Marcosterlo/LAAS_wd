@@ -23,16 +23,13 @@ nx = s.nx
 nu = s.nu
 neurons = int(nphi / (nlayer - 1))
 
-# Creation of closed loop matrix N
-N = block_diag(*W) # Reminder for myself: * operator unpacks lists and pass it as singular arguments
-
-Nux = K
-Nuw = N[nphi:, nx:]
-Nub = b[-1]
-
-Nvx = N[:nphi, :nx]
-Nvw = N[:nphi, nx:]
-Nvb = np.concatenate((b[0], b[1]))
+N = s.N
+Nux = N[0]
+Nuw = N[1]
+Nub = N[2]
+Nvx = N[3]
+Nvw = N[4]
+Nvb = N[5]
 
 # Fake zero function
 def fake_zero(size):
@@ -48,14 +45,16 @@ constraints += [T >> fake_zero(T.shape[0])]
 
 Z1 = cp.Variable((neurons, nx))
 Z2 = cp.Variable((neurons, nx))
-Z = cp.vstack([Z1, Z2])
+Z3 = cp.Variable((neurons, nx))
+Z4 = cp.Variable((neurons, nx))
+Z = cp.vstack([Z1, Z2, Z3, Z4])
 
 rho = cp.Variable()
 constraints += [rho >> fake_zero(1)]
 
 # Fixed parameters
 alpha = 9*1e-4
-P0 = np.array([[0.2916, 0.0054], [0.0054, 0.0090]])
+P0 = np.array([[0.2916, 0.0054], [0.0054, 0.0090]])*1e5
 vbar = 1
 
 # Matrix creation
@@ -90,18 +89,30 @@ Rphi = cp.bmat([
 ])
 
 decay_rate_eta_1 = 0.9
-r1 = 0.6
+r1 = 0.8
 l1 = decay_rate_eta_1 - r1
 gamma1 = (l1 - 1) / r1
 gamma1 = np.ones(neurons)*gamma1
 
 decay_rate_eta_2 = 0.9
-r2 = 0.4
+r2 = 0.8
 l2 = decay_rate_eta_2 - r2
 gamma2 = (l2 - 1) / r2
 gamma2 = np.ones(neurons)*gamma2
 
-gammavec = np.concatenate([gamma1, gamma2], axis=0)
+decay_rate_eta_3 = 0.9
+r3 = 0.8
+l3 = decay_rate_eta_3 - r3
+gamma3 = (l3 - 1) / r3
+gamma3 = np.ones(neurons)*gamma3
+
+decay_rate_eta_4 = 0.9
+r4 = 0.8
+l4 = decay_rate_eta_4 - r4
+gamma4 = (l4 - 1) / r4
+gamma4 = np.ones(neurons)*gamma4
+
+gammavec = np.concatenate([gamma1, gamma2, gamma3, gamma4], axis=0)
 
 gamma = cp.diag(gammavec)
 
@@ -126,7 +137,7 @@ objective = cp.Minimize(rho)
 prob = cp.Problem(objective, constraints)
 
 # Problem resolution
-prob.solve(solver=cp.SCS, verbose=True)
+prob.solve(solver=cp.SCS, verbose=True, max_iter=100000)
 
 # Checks
 if prob.status not in  ["infeasible", "ubounded"]:
