@@ -34,6 +34,8 @@ Nvx = N[:nphi, :nx]
 Nvw = N[:nphi, nx:]
 Nvb = np.concatenate((b[0], b[1]))
 
+print(Nvw)
+
 # Fake zero function
 def fake_zero(size):
     return 1e-3 * np.eye(size)

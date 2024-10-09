@@ -11,19 +11,24 @@ parser.add_argument('--model_name', type=str)
 args = parser.parse_args()
 model = PPO.load(args.model_name)
 
-nstep = 2000
+nstep = 200
 state = []
 u = []
 
 obs = env.reset()
+print(obs[0])
+cazz = 0
 for i in range(nstep):
     if i == 0:
         action, _states = model.predict(obs[0], deterministic=True)
     else:
         action, _states = model.predict(obs, deterministic=True)
     obs, reward, done, truncated, info = env.step(action[0])
+    cazz += reward
     state.append(obs)
     u.append(action[0])
+
+print(cazz)
 
 state = np.array(state)
 u = np.array(u)
