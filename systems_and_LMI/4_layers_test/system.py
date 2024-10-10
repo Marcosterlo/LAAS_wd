@@ -47,15 +47,13 @@ class System:
     W3 = np.loadtxt(W3_name, delimiter=',')
     W4_name = os.path.abspath(__file__ + "/../4_layers/W4.csv")
     W4 = np.loadtxt(W4_name, delimiter=',')
-    W5_name = os.path.abspath(__file__ + "/../4_layers/W5.csv")
-    W5 = np.loadtxt(W5_name, delimiter=',')
-    W5 = W5.reshape(self.nu, len(W5))
+    W4 = W4.reshape(self.nu, len(W4))
 
     # Vector of weigts
-    self.W = [W1, W2, W3, W4, W5]
+    self.W = [W1, W2, W3, W4]
 
     # Number of neurons
-    self.nphi = W1.shape[0] + W2.shape[0] + W3.shape[0] + W4.shape[0]
+    self.nphi = W1.shape[0] + W2.shape[0] + W3.shape[0]
     
     # Bias import of trained FFNN
     b1_name = os.path.abspath(__file__ + "/../4_layers/b1.csv")
@@ -66,11 +64,9 @@ class System:
     b3 = np.loadtxt(b3_name, delimiter=',')
     b4_name = os.path.abspath(__file__ + "/../4_layers/b4.csv")
     b4 = np.loadtxt(b4_name, delimiter=',')
-    b5_name = os.path.abspath(__file__ + "/../4_layers/b5.csv")
-    b5 = np.loadtxt(b5_name, delimiter=',')
 
     # Vector of biases
-    self.b = [b1, b2, b3, b4, b5]
+    self.b = [b1, b2, b3, b4]
 
     self.nlayer = len(self.W)
 
@@ -98,7 +94,7 @@ class System:
     Nub = self.b[-1].reshape(self.nu, self.nu)
     Nvx = N[:-self.nu, :self.nx]
     Nvw = N[:-self.nu, self.nx:]
-    Nvb = np.array([[self.b[0]], [self.b[1]], [self.b[2]], [self.b[3]]]).reshape(self.nphi, self.nu)
+    Nvb = np.array([[self.b[0]], [self.b[1]], [self.b[2]]]).reshape(self.nphi, self.nu)
 
     self.N = [Nux, Nuw, Nub, Nvx, Nvw, Nvb]
 
@@ -126,8 +122,7 @@ class System:
     nu = self.saturation_activation(self.layers[0](torch.tensor(x)))
     nu = self.saturation_activation(self.layers[1](nu))
     nu = self.saturation_activation(self.layers[2](nu))
-    nu = self.saturation_activation(self.layers[3](nu))
-    nu = self.layers[4](nu).detach().numpy()
+    nu = self.layers[3](nu).detach().numpy()
 
     return nu
 
@@ -171,7 +166,7 @@ if __name__ == "__main__":
   # Systam object creation
   s = System()
 
-  check_lyap = True
+  check_lyap = False
 
   if check_lyap:
     P = np.load('./4_layers/P_mat.npy')
@@ -196,8 +191,8 @@ if __name__ == "__main__":
         if (x0.T @ P @ x0 < 1): 
           not_in_ellipsoid = False
     else:
-        x1 = np.random.uniform(-np.pi/2, np.pi/2)
-        x2 = np.random.uniform(-5, 5)
+        x1 = np.random.uniform(-np.pi/4, np.pi/4)
+        x2 = np.random.uniform(-1, 1)
         x0 = np.array([x1, x2])
 
     x1_deg = x1/np.pi*180

@@ -11,12 +11,14 @@ check_env(env, warn=True)
 
 # Args to define a policy of 4 layers of 32 neurons per layer
 policy_kwargs = dict(
-    net_arch=[8, 8],
+    net_arch=[16, 16],
     activation_fn=nn.Tanh
 )
 
 # Definition of model along with hyperparameters
-model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, ent_coef=0.0, gae_lambda=0.95, gamma=0.9, learning_rate=0.001, n_epochs=10, n_steps=1024)
+model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, ent_coef=0.0, gae_lambda=0.95, gamma=0.9, learning_rate=0.0001, n_steps=4096)
 
 # Training of model
 model.learn(total_timesteps=100000)
+
+model.save('linear')

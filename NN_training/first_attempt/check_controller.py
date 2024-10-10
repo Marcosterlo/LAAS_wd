@@ -11,7 +11,7 @@ parser.add_argument('--model_name', type=str)
 args = parser.parse_args()
 model = PPO.load(args.model_name)
 
-nstep = 200
+nstep = 500
 state = []
 u = []
 

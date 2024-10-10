@@ -1,0 +1,89 @@
+\documentclass[12pt]{article}
+\usepackage{float}
+\usepackage{graphicx}
+\input{math_commands}
+\usepackage{hyperref}
+\usepackage[margin=54pt]{geometry}
+\usepackage{biblatex}
+\addbibresource{biblio.bib}
+
+
+\begin{document}
+
+\date{}
+\author{Marco Sterlini}
+
+\title{Dynamic ETM integration}
+\maketitle
+
+\section*{Previous works analysis}
+The system under analysis both in \cite{css-paper} and \cite{css-extended} is characterized by a \textit{Feed Forward Neural Network} controller characterized by \textit{l} layers that takes the system state $x$ as input.
+
+The controller $\pi_{ETM}$ of $l$-layers is defined by:
+
+\begin{multline}
+  \hat{\omega}^{0}(k) = x(k)\\
+  \nu_i(k) = W^{i} \hat{\omega}^{i-1}(k) + b^i,\ \ \ i \in \left\{ 1, \dots, l \right\}\\
+  \omega^i(k) = \text{sat}(\nu^i(k))\\
+  u(k) = W^{l+1} \hat{\omega}^{l}(k) + b^{l+1}\\
+\end{multline}
+
+Where $\nu^{i}$ is the input to the $i^{th}$ activation function, $\omega^i$ and $\hat{\omega^i}$ are the current output and the last updated output from the $i^{th}$ layer.
+
+To isolate the non linearity everything is collected with the vectors:
+
+\begin{multline*}
+  \nu_{\phi} = [\nu^{1 \top}\ \dots \ \nu^{l \top}]^{\top}\\
+  \omega_{\phi} = [\omega^{1 \top}\ \dots \ \omega^{l \top}]^{\top}\\
+  \hat{\omega}_{\phi} = [\hat{\omega}^{1 \top}\ \dots \ \hat{\omega}^{l \top}]^{\top}\\
+  \text{sat}(\nu_{\phi}) = [\text{sat}(\nu^{1})^{\top}\ \dots \ \text{sat}(\nu^{l})^{\top}]^{\top}\\
+  \omega_{\phi}(k) = \text{sat}(\nu_{\phi})\\
+\end{multline*}
+
+Denoting with $n_{\phi} = \sum_{i=1}^{l} n_{i}$ and $n_{i}$ the number of neurons of the $i^{th}$ layer. This leads to 
+
+\begin{equation}
+  \begin{bmatrix}
+    u(k)\\
+    \nu_{\phi}(k)
+  \end{bmatrix} = N \begin{bmatrix}
+    x(k)\\
+    \hat{\omega}_{\phi}(k)\\
+    1
+  \end{bmatrix}
+\end{equation}
+
+\section*{Ideas so far}
+
+\begin{equation}
+  \qmx{1 & 2\\ 3 & 4}
+\end{equation}
+\pagebreak
+\printbibliography
+
+
+\end{document}
+
+% \begin{figure}[H]
+%     \centering
+%     \begin{subfigure}{0.4\textwidth}
+%     \includegraphics[width=\textwidth]{}
+%     \caption{}
+%     \label{}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}{0.55\textwidth}
+%     \includegraphics[width=\textwidth]{}
+%     \caption{}
+%     \label{}
+%     \end{subfigure}
+%     \caption{}
+%     \label{}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.65\textwidth]{}
+%     \caption{}
+%     \label{}
+% \end{figure}

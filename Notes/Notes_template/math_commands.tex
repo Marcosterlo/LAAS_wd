@@ -1,0 +1,146 @@
+\usepackage{amsfonts,amssymb,amsmath,amsthm}
+
+%% set-style letters
+\def\AA{{\mathbb{A}}}
+\def\BB{{\mathbb{B}}}
+\def\CC{{\mathbb{C}}}
+\def\DD{{\mathbb{D}}}
+\def\EE{{\mathbb{E}}}
+\def\FF{{\mathbb{F}}}
+\def\GG{{\mathbb{G}}}
+\def\HH{{\mathbb{H}}}
+\def\II{{\mathbb{I}}}
+\def\JJ{{\mathbb{J}}}
+\def\KK{{\mathbb{K}}}
+\def\LL{{\mathbb{L}}}
+\def\MM{{\mathbb{M}}}
+\def\NN{{\mathbb{N}}}
+\def\OO{{\mathbb{O}}}
+\def\PP{{\mathbb{P}}}
+\def\QQ{{\mathbb{Q}}}
+\def\RR{{\mathbb{R}}}
+\def\SS{{\mathbb{S}}}
+\def\TT{{\mathbb{T}}}
+\def\UU{{\mathbb{U}}}
+\def\VV{{\mathbb{V}}}
+\def\WW{{\mathbb{W}}}
+\def\XX{{\mathbb{X}}}
+\def\YY{{\mathbb{Y}}}
+\def\ZZ{{\mathbb{Z}}}
+
+%% calligraphic letters
+\def\cA{{\mathcal{A}}}
+\def\cB{{\mathcal{B}}}
+\def\cC{{\mathcal{C}}}
+\def\cD{{\mathcal{D}}}
+\def\cE{{\mathcal{E}}}
+\def\cF{{\mathcal{F}}}
+\def\cG{{\mathcal{G}}}
+\def\cH{{\mathcal{H}}}
+\def\cI{{\mathcal{I}}}
+\def\cJ{{\mathcal{J}}}
+\def\cK{{\mathcal{K}}}
+\def\cL{{\mathcal{L}}}
+\def\cM{{\mathcal{M}}}
+\def\cN{{\mathcal{N}}}
+\def\cO{{\mathcal{O}}}
+\def\cP{{\mathcal{P}}}
+\def\cQ{{\mathcal{Q}}}
+\def\cR{{\mathcal{R}}}
+\def\cS{{\mathcal{S}}}
+\def\cT{{\mathcal{T}}}
+\def\cU{{\mathcal{U}}}
+\def\cV{{\mathcal{V}}}
+\def\cW{{\mathcal{W}}}
+\def\cX{{\mathcal{X}}}
+\def\cY{{\mathcal{Y}}}
+\def\cZ{{\mathcal{Z}}}
+\def\cKL{{\mathcal{KL}}}
+
+%% bold letters
+\def\bA{{\bf{A}}}
+\def\bB{{\bf{B}}}
+\def\bC{{\bf{C}}}
+\def\bD{{\bf{D}}}
+\def\bE{{\bf{E}}}
+\def\bF{{\bf{F}}}
+\def\bG{{\bf{G}}}
+\def\bH{{\bf{H}}}
+\def\bI{{\bf{I}}}
+\def\bJ{{\bf{J}}}
+\def\bK{{\bf{K}}}
+\def\bL{{\bf{L}}}
+\def\bM{{\bf{M}}}
+\def\bN{{\bf{N}}}
+\def\bO{{\bf{O}}}
+\def\bP{{\bf{P}}}
+\def\bQ{{\bf{Q}}}
+\def\bR{{\bf{R}}}
+\def\bS{{\bf{S}}}
+\def\bT{{\bf{T}}}
+\def\bU{{\bf{U}}}
+\def\bV{{\bf{V}}}
+\def\bW{{\bf{W}}}
+\def\bX{{\bf{X}}}
+\def\bY{{\bf{Y}}}
+\def\bZ{{\bf{Z}}}
+\def\ba{{\bf{a}}}
+\def\bb{{\bf{b}}}
+\def\bc{{\bf{c}}}
+\def\bd{{\bf{d}}}
+\def\be{{\bf{e}}}
+\def\boldf{{\bf{f}}} %different
+\def\bg{{\bf{g}}}
+\def\bh{{\bf{h}}}
+\def\bi{{\bf{i}}}
+\def\bj{{\bf{j}}}
+\def\bk{{\bf{k}}}
+\def\bl{{\bf{l}}}
+\def\bm{{\bf{m}}}
+\def\bn{{\bf{n}}}
+\def\bo{{\bf{o}}}
+\def\bp{{\bf{p}}}
+\def\bq{{\bf{q}}}
+\def\br{{\bf{r}}}
+\def\bs{{\bf{s}}}
+\def\bt{{\bf{t}}}
+\def\bu{{\bf{u}}}
+\def\bv{{\bf{v}}}
+\def\bw{{\bf{w}}}
+\def\bx{{\bf{x}}}
+\def\by{{\bf{y}}}
+\def\bz{{\bf{z}}}
+
+%% other symbols
+\DeclareMathOperator{\1}{\mathbf{1}}
+\DeclareMathOperator{\0}{\mathbf{0}}
+\DeclareMathOperator{\Id}{I}
+\newcommand{\td}{\mathfrak{t}} % discrete-time 
+
+%% operators
+\DeclareMathOperator{\col}{col}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\blkdiag}{blkdiag}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\dis}{d}
+\DeclareMathOperator{\sat}{sat} 
+\DeclareMathOperator{\convhull}{\textbf{co}}
+\DeclareMathOperator{\argmin}{argmin}
+\DeclareMathOperator{\argmax}{argmax}
+\DeclareMathOperator{\spec}{spec}
+\def\He#1{\texttt{\rm{He}}\left\{{#1}\right\}}
+\DeclareMathOperator{\trace}{tr}
+\newcommand{\Imag}{\mathrm{Im}}
+
+%% shortcuts
+\newcommand{\norm}[1]{\lvert #1\rvert}
+\newcommand{\wnorm}[2]{\lvert #1\rvert^2_{#2}}
+\newcommand{\pderiv}[2]{\dfrac{\partial #1}{\partial #2}}
+\newcommand{\pdef}[1]{\SS_{\succ0}^{#1}}
+\newcommand\psemidef[1]{\SS_{\succeq0}^{#1}}
+\newcommand{\qmx}[1]{\left[\begin{matrix}#1\end{matrix}\right]}
+\newcommand{\pmx}[1]{\left(\begin{matrix}#1\end{matrix}\right)}
+\newcommand{\smallpmat}[1]{\left(\begin{smallmatrix} #1 \end{smallmatrix} \right)}
+\newcommand{\smallqmat}[1]{\left[\begin{smallmatrix} #1 \end{smallmatrix} \right]}
+\newcommand{\overbar}[1]{\mkern 1.5mu\overline{\mkern-1.5mu#1\mkern-1.5mu}\mkern 1.5mu}
+\renewcommand{\underbar}[1]{\mkern 1mu\underline{\mkern-1mu#1\mkern-1mu}\mkern 1mu}

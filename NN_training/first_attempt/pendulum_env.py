@@ -45,9 +45,10 @@ class Pendulum_env(gym.Env):
         u = np.clip(action, -1, 1) * self.max_torque
 
         ## Cost function with differential u
-        reward = np.exp(-th**2) + 0.2*np.exp(-thdot**2) + 0.1*np.exp(-u**2)
+        reward = np.exp(-th**2) + 0.1*np.exp(-thdot**2) + 0.01*np.exp(-u**2)
         
         self.state = np.squeeze((A + B @ K) @ self.state.reshape(2,1) + B @ u.reshape(1,1)).astype(np.float32)
+
 
         terminated = False
         if self.time > 200 or not self.observation_space.contains(self.state):
