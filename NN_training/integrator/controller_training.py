@@ -16,6 +16,6 @@ policy_kwargs = dict(
 
 model = PPO('MlpPolicy', env, policy_kwargs=policy_kwargs, verbose=1)
 
-model.learn(total_timesteps=100000)
+model.learn(total_timesteps=500000)
 
 model.save('linear')

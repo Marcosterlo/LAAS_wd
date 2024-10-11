@@ -11,12 +11,14 @@ class Integrator_env(gym.Env):
         self.state = None
 
         self.g = 9.81
-        self.m = 0.5
+        self.m = 0.15
         self.l = 0.5
         self.mu = 0.05
         self.dt = 0.02
         self.max_torque = 5
         self.max_speed = 8.0
+
+        self.constant_reference = 0
 
         self.nx = 3
         self.nu = 1
@@ -37,12 +39,30 @@ class Integrator_env(gym.Env):
         mu = self.mu
         dt = self.dt
 
+        y = x - self.constant_reference
+
         u = np.squeeze(np.clip(action, -1, 1) * self.max_torque)
-        reward =  - (x)**2 - 0.1*dx**2 - (eta - self.last_eta)**2 - 0.01*u**2 + 1
+
+        # reward =  - (x)**2 - 0.1*dx**2 - (eta - self.last_eta)**2 - 0.01*u**2 + 1
+        
+        W_y = 1
+        W_dx = 0.01
+        W_u = 0.001 
+        W_eta = 0.01
+        W_eta_y = 1
+
+        vec = np.array([y, dx, eta, u])
+        W = np.array([
+            [W_y,         0,      0.5*W_eta_y,    0],
+            [0,           W_dx,   0.005,              0],
+            [0.5*W_eta_y, 0.005,      W_eta,          0],
+            [0,           0,      0,              W_u]
+        ])
+        reward = -vec.T @ W @ vec + 1
 
         dxplus = dx + (g/l*np.sin(x) - mu/(m*l**2)*dx + 1/(m*l**2)*u) * dt
         xplus = x + dx * dt
-        etaplus = eta + x - 0.1
+        etaplus = eta + y
         self.last_eta = etaplus
 
         self.state = np.array([xplus, dxplus, etaplus]).astype(np.float32)
@@ -56,8 +76,8 @@ class Integrator_env(gym.Env):
         return self.get_obs(), float(reward), terminated, terminated, {}
     
     def reset(self, seed=None):
-        x_lim = 0.5
-        dx_lim = 1
+        x_lim = 60 * np.pi / 180
+        dx_lim = self.max_speed
         newx = np.random.uniform(-x_lim, x_lim)
         newdx = np.random.uniform(-dx_lim, dx_lim)
         neweta = 0

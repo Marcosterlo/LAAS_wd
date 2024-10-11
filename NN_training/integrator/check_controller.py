@@ -28,6 +28,8 @@ state = np.array(state)
 u = np.array(u)
 time_grid = np.linspace(0, len(state), len(state))
 
+print(f"Initial state: x0: {state[0][0]/np.pi*180:.2f}, dx0: {state[0][1]:.2f},")
+
 plt.plot(time_grid, state[:,0])
 plt.grid(True)
 plt.title("Position")
