@@ -19,6 +19,8 @@ class Pendulum_env(gym.Env):
         self.nx = 2
         self.nu = 1
 
+        self.state = None
+
         self.A = np.array([[1,      self.dt],
                   [self.g/self.l*self.dt, 1 - self.mu/(self.m*self.l**2)*self.dt]])
 
@@ -46,6 +48,7 @@ class Pendulum_env(gym.Env):
 
         ## Cost function with differential u
         reward = np.exp(-th**2) + 0.1*np.exp(-thdot**2) + 0.01*np.exp(-u**2)
+        reward = -th**2 - 0.1*thdot**2 - 0.01*u**2 + 1
         
         self.state = np.squeeze((A + B @ K) @ self.state.reshape(2,1) + B @ u.reshape(1,1)).astype(np.float32)
 
@@ -59,8 +62,8 @@ class Pendulum_env(gym.Env):
         return self.get_obs(), float(reward), terminated, terminated, {}
 
     def reset(self, seed=None):
-        xlim = self.xmax[0]/4
-        vlim = self.xmax[1]/2
+        xlim = np.pi/2
+        vlim = 2
         self.state = np.array([np.random.uniform(-xlim, xlim), np.random.uniform(-vlim, vlim)]).astype(np.float32)
         self.time = 0
         return (self.get_obs(), {})

@@ -33,20 +33,16 @@ Nvx = N[:nphi, :nx]
 Nvw = N[:nphi, nx:]
 Nvb = np.concatenate((b[0], b[1]))
 
-# Fake zero function
-def fake_zero(size):
-    return 1e-3 * np.eye(size)
-
 # Variables for LMI
 P = cp.Variable((nx, nx), symmetric=True)
-constraints = [P >> 1e-3 * fake_zero(nx)]
+constraints = [P >> 0]
 
 T_val = cp.Variable(nphi)
 T = cp.diag(T_val)
-constraints += [T >> fake_zero(T.shape[0])]
+constraints += [T >> 0]
 
 rho = cp.Variable()
-constraints += [rho >> fake_zero(1)]
+constraints += [rho >= 0]
 
 decay_rate = 0.9
 r = 0.1
@@ -103,14 +99,14 @@ M = cp.bmat([
     ]) + beta * Rphi.T @ mat @ Rphi
  
 # Definite negative M constraint for stability
-constraints += [M << -fake_zero(M.shape[0])]
+constraints += [M << 0]
 
 # Inclusion constraint
 inclusion = cp.bmat([
     [cp.hstack([P0, P])],
     [cp.hstack([P, P])]
 ])
-constraints += [inclusion >> fake_zero(inclusion.shape[0])]
+constraints += [inclusion >> 0]
 
 # Ellipsoid condition
 for i in range(nlayer-1):
@@ -125,16 +121,26 @@ for i in range(nlayer-1):
         constraints += [ellip >> 0]
 
 # Optimization condition
-objective = cp.Minimize(-rho)
+objective = cp.Minimize(rho)
 
 # Problem definition
 prob = cp.Problem(objective, constraints)
 
 # Problem resolution
-prob.solve(solver=cp.SCS, verbose=True)
+solved = False
+prob.solve(solver=cp.MOSEK, verbose=True)
+if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infeasible_inaccurate"]:
+    solved = True
+else:
+    print("Mosek failed")
 
-# Checks
-if prob.status not in  ["infeasible", "ubounded"]:
+if not solved:
+    prob.solve(solver=cp.SCS, verbose=True)
+
+if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infeasible_inaccurate"]:
+    solved = True
+
+if solved:
     print("Problem status is " + prob.status)
     print("Max P eigenvalue: ", np.max(np.linalg.eigvals(P.value)))
     print("Max M eigenvalue: ", np.max(np.linalg.eigvals(M.value)))
@@ -142,5 +148,7 @@ if prob.status not in  ["infeasible", "ubounded"]:
 
     # Saving matrices to npy file
     # np.save("P_mat", P.value)
+    # np.save("Z_mat", Z.value)
+    # np.save("T_mat", T.value)
 else:
     print("=========== Unfeasible problem =============")

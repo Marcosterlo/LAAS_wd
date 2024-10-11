@@ -1,13 +1,9 @@
 import cvxpy as cp
 from system import System
 import numpy as np
-from scipy.linalg import block_diag
 
 # System initialization
 s = System()
-
-# Empty list of constraints
-pbLMI = []
 
 # Matrix import
 A = s.A
@@ -16,32 +12,20 @@ K = s.K
 
 # NN parameters
 nphi = s.nphi
-W = s.W
-b = s.b
 nlayer = s.nlayer
 nx = s.nx
 nu = s.nu
-neurons = int(nphi / (nlayer - 1))
+neurons = [8, 16, 8]
+vbar = 1
+alpha = 9*1e-4
 
-# Creation of closed loop matrix N
-N = block_diag(*W) # Reminder for myself: * operator unpacks lists and pass it as singular arguments
-
-Nux = K
-Nuw = N[nphi:, nx:]
-Nub = b[-1]
-
-Nvx = N[:nphi, :nx]
-Nvw = N[:nphi, nx:]
-Nvb = np.concatenate((b[0], b[1]))
-
-# Fake zero function
-def fake_zero(size):
-    return 1e-3 * np.eye(size)
-
-# rho and lambda for beta term
-r = 0.42
-l = 1 - r - 0.1
-beta = (1 - l) / r
+N = s.N
+Nux = N[0]
+Nuw = N[1]
+Nub = N[2]
+Nvx = N[3]
+Nvw = N[4]
+Nvb = N[5]
 
 # Variables for LMI
 P = cp.Variable((nx, nx), symmetric=True)
@@ -51,17 +35,10 @@ T_val = cp.Variable(nphi)
 T = cp.diag(T_val)
 constraints += [T >> 0]
 
-Z1 = cp.Variable((neurons, nx))
-Z2 = cp.Variable((neurons, nx))
-Z = cp.vstack([Z1, Z2])
-
-rho = cp.Variable()
-constraints += [rho >= 0]
-
-# Fixed parameters
-alpha = 9*1e-4
-P0 = np.array([[0.2916, 0.0054], [0.0054, 0.0090]])
-vbar = 1
+Z1 = cp.Variable((neurons[0], nx))
+Z2 = cp.Variable((neurons[1], nx))
+Z3 = cp.Variable((neurons[2], nx))
+Z = cp.vstack([Z1, Z2, Z3])
 
 # Matrix creation
 R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
@@ -69,28 +46,26 @@ Rw = Nux + Nuw @ R @ Nvx
 Rb = Nuw @ R @ Nvb + Nub
 Abar = A + B @ K + B @ Nuw @ R @ Nvx
 
-# The fastes way I found to create big matrices was to create lines and stack them together
-Rline1 = np.concatenate((np.eye(nx), np.zeros((2, 64))), axis=1)
-Rline2 = np.concatenate((R @ Nvx, np.eye(nphi) - R), axis=1)
-Rline3 = np.concatenate((np.zeros((nphi, nx)), np.eye(nphi)), axis=1)
-Rphi = np.concatenate((Rline1, Rline2, Rline3), axis=0)
+Rphi = cp.bmat([
+    [np.eye(nx), np.zeros((nx, nphi))],
+    [R @ Nvx, np.eye(nphi) - R],
+    [np.zeros((nphi, nx)), np.eye(nphi)]
+])
 
-matline1 = np.concatenate((np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi))), axis=1)
-matline2 = cp.hstack([Z, -T, T])
-mat = cp.vstack([matline1, matline2])
+mat = cp.bmat([
+    [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi))],
+    [Z, -T, T]
+])
 
 M = cp.vstack([Abar.T, (-B @ Nuw @ R).T]) @ P @ cp.hstack([Abar, -B @ Nuw @ R]) - cp.bmat([
     [P, np.zeros((nx, nphi))],
     [np.zeros((nphi, nx)), np.zeros((nphi, nphi))]
-]) + beta * (- Rphi.T @ mat.T - mat @ Rphi)
- 
-# Definite negative M constraint for stability
+]) - Rphi.T @ mat.T - mat @ Rphi
+
 constraints += [M << -1e-4 * np.eye(M.shape[0])]
 
-# Condition to reach thhe lmimits of feasibility
-constraints += [M + rho * np.eye(M.shape[0]) >> 0]
-
 # Inclusion constraint
+P0 = np.load('./3_layers/P_mat.npy')
 inclusion = cp.bmat([
     [cp.hstack([P0, P])],
     [cp.hstack([P, P])]
@@ -99,15 +74,19 @@ constraints += [inclusion >> 0]
 
 # Ellipsoid condition
 for i in range(nlayer-1):
-    for k in range(neurons):
-        Z_el = Z[i*neurons + k]
-        T_el = T[i*neurons + k, i*neurons + k]
+    for k in range(len(neurons)):
+        Z_el = Z[i*neurons[i] + k]
+        T_el = T[i*neurons[i] + k, i*neurons[i] + k]
         vcap = np.min([np.abs(-vbar -s.wstar[i][k][0]), np.abs(vbar - s.wstar[i][k][0])], axis=0)
         ellip = cp.bmat([
             [P, cp.reshape(Z_el, (2,1))],
             [cp.reshape(Z_el, (1,2)), cp.reshape(2*alpha*T_el - alpha**2*vcap**(-2), (1, 1))] 
         ])
         constraints += [ellip >> 0]
+
+rho = cp.Variable()
+constraints += [rho >= 0]
+constraints += [M + rho * np.eye(M.shape[0]) >> 0]
 
 # Optimization condition
 objective = cp.Minimize(rho)
