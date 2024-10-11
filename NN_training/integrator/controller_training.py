@@ -8,3 +8,14 @@ env = Integrator_env()
 
 # Check if the environment is correctly defined
 check_env(env, warn=True)
+
+policy_kwargs = dict(
+  net_arch=[32, 32, 32],
+  activation_fn=nn.Tanh
+)
+
+model = PPO('MlpPolicy', env, policy_kwargs=policy_kwargs, verbose=1)
+
+model.learn(total_timesteps=100000)
+
+model.save('linear')

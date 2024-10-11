@@ -10,38 +10,45 @@ class Integrator_env(gym.Env):
         # state in the form x, eta
         self.state = None
 
-        self.nx = 
-        self.nu = 
+        self.g = 9.81
+        self.m = 0.5
+        self.l = 0.5
+        self.mu = 0.05
+        self.dt = 0.02
+        self.max_torque = 5
+        self.max_speed = 8.0
 
-        self.constant_reference = 0.2
-        self.max_input = 5
-
-        self.A = 
-        self.B = 
-        self.C = 
+        self.nx = 3
+        self.nu = 1
 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.nu,))
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf)
+        xmax = np.array([np.pi/2, self.max_speed, np.inf])
+        self.observation_space = spaces.Box(low=-xmax, high=xmax, shape=(self.nx,))
+
+        self.time = 0
+        self.last_eta = 1e3
     
     def step(self, action):
 
-        x, eta = self.state
+        x, dx, eta = self.state
+        g = self.g
+        m = self.m
+        l = self.l
+        mu = self.mu
+        dt = self.dt
 
-        A = self.A
-        B = self.B
-        C = self.C
+        u = np.squeeze(np.clip(action, -1, 1) * self.max_torque)
+        reward =  - (x)**2 - 0.1*dx**2 - (eta - self.last_eta)**2 - 0.01*u**2 + 1
 
-        y = C @ x
+        dxplus = dx + (g/l*np.sin(x) - mu/(m*l**2)*dx + 1/(m*l**2)*u) * dt
+        xplus = x + dx * dt
+        etaplus = eta + x - 0.1
+        self.last_eta = etaplus
 
-        u = np.clip(action, -1, 1) * self.max_input
-
-        xplus = A @ x + phi1(y) + B @ u
-        etaplus = eta - (y - self.constant_reference)
-
-        self.state = np.array([[xplus], [etaplus]])
+        self.state = np.array([xplus, dxplus, etaplus]).astype(np.float32)
 
         terminated = False
-        if self.time > 200 or not self.observation_space.contains(self.state):
+        if self.time > 500 or not self.observation_space.contains(self.state):
             terminated = True
 
         self.time += 1
@@ -50,19 +57,24 @@ class Integrator_env(gym.Env):
     
     def reset(self, seed=None):
         x_lim = 0.5
-        eta_lim = 0.5
+        dx_lim = 1
         newx = np.random.uniform(-x_lim, x_lim)
-        neweta = np.random.uniform(-eta_lim, eta_lim)
-        self.state = np.array([[newx], [neweta]])
+        newdx = np.random.uniform(-dx_lim, dx_lim)
+        neweta = 0
+        self.state = np.array([newx, newdx, neweta]).astype(np.float32)
         self.time = 0
 
         return (self.get_obs(), {})
     
     def get_obs(self):
         x = self.state[0]
-        y = self.C @ x
-        eta = self.state[1]
-        return np.array([[y], [eta]])
+        dx = self.state[1]
+        eta = self.state[2]
+        return np.array([x, dx, eta]).astype(np.float32)
     
     def render(self):
-        print(f"State x: {}")
+        state = self.get_obs()
+        x = state[0]
+        dx = state[1]
+        eta = state[2]
+        print(f"State x: {x:.2f}, dx: {dx:.2f}, eta: {eta:.2f}")
