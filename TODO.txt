@@ -1,0 +1,2 @@
+- Cambiare P (3x3) in una P che ha variabili solo nel primo blocco 2x2 ignorando eta
+- Aggiungere le ellipsoid condition scritte bene

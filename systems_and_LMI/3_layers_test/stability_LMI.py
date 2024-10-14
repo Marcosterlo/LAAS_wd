@@ -38,7 +38,7 @@ constraints += [T >> 0]
 Z1 = cp.Variable((neurons[0], nx))
 Z2 = cp.Variable((neurons[1], nx))
 Z3 = cp.Variable((neurons[2], nx))
-Z = cp.vstack([Z1, Z2, Z3])
+Z = cp.vstack([Z1, Z2, Z3])*0
 
 # Matrix creation
 R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
@@ -62,7 +62,8 @@ M = cp.vstack([Abar.T, (-B @ Nuw @ R).T]) @ P @ cp.hstack([Abar, -B @ Nuw @ R]) 
     [np.zeros((nphi, nx)), np.zeros((nphi, nphi))]
 ]) - Rphi.T @ mat.T - mat @ Rphi
 
-constraints += [M << -1e-4 * np.eye(M.shape[0])]
+# constraints += [M << -1e-4 * np.eye(M.shape[0])]
+constraints += [M << -1e-3*np.eye(M.shape[0])]
 
 # Inclusion constraint
 P0 = np.load('./3_layers/P_mat.npy')
@@ -70,7 +71,7 @@ inclusion = cp.bmat([
     [cp.hstack([P0, P])],
     [cp.hstack([P, P])]
 ])
-constraints += [inclusion >> 0]
+# constraints += [inclusion >> 0]
 
 # Ellipsoid condition
 for i in range(nlayer-1):
@@ -82,14 +83,14 @@ for i in range(nlayer-1):
             [P, cp.reshape(Z_el, (2,1))],
             [cp.reshape(Z_el, (1,2)), cp.reshape(2*alpha*T_el - alpha**2*vcap**(-2), (1, 1))] 
         ])
-        constraints += [ellip >> 0]
+        # constraints += [ellip >> 0]
 
-rho = cp.Variable()
-constraints += [rho >= 0]
-constraints += [M + rho * np.eye(M.shape[0]) >> 0]
+# rho = cp.Variable()
+# constraints += [rho >= 0]
+# constraints += [M + rho * np.eye(M.shape[0]) >> 0]
 
 # Optimization condition
-objective = cp.Minimize(rho)
+objective = cp.Minimize(cp.trace(P))
 
 # Problem definition
 prob = cp.Problem(objective, constraints)

@@ -6,9 +6,6 @@ from scipy.linalg import block_diag
 # System initialization
 s = System()
 
-# Empty list of constraints
-pbLMI = []
-
 # Matrix import
 A = s.A
 B = s.B

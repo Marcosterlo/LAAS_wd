@@ -218,7 +218,7 @@ if __name__ == "__main__":
     else:
       fig, axs = plt.subplots(3)
 
-    axs[0].plot(time_grid, x - s.xstar[0])
+    axs[0].plot(time_grid, x)
     axs[0].set_ylabel('x1')
     axs[0].grid(True)
 
