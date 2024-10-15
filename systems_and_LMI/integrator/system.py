@@ -103,12 +103,11 @@ class Integrator():
 
         u = np.clip(input, -1, 1) * self.max_torque
 
-        u = np.array([u[0], -self.constant_reference])
-
         theta = self.state[0]
 
         self.state = self.A @ self.state + self.B @ u + self.Mq * (np.sin(theta) - theta)
 
+        self.state[2] += - self.constant_reference
         
         return self.state
 

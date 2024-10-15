@@ -68,9 +68,9 @@ constraints += [T >> 0]
 constraints += [M << 0]
 
 vbar = 1
-alpha = 9 * 1e-7
+alpha = 9 * 1e-4
 
-constraints += [M << -1e5*np.eye(M.shape[0])]
+constraints += [M << -1e-2*np.eye(M.shape[0])]
 
 # Ellipsoid condition
 for i in range(nlayer-1):
