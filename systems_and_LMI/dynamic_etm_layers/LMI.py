@@ -62,7 +62,7 @@ inclusion = cp.bmat([
     [cp.hstack([P0, P])],
     [cp.hstack([P, P])]
 ])
-constraints += [inclusion >> 0]
+# constraints += [inclusion >> 0]
 
 # Ellipsoid condition
 for i in range(nlayer-1):

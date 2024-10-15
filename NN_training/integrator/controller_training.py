@@ -11,7 +11,7 @@ check_env(env, warn=True)
 
 policy_kwargs = dict(
   net_arch=[32, 32, 32],
-  activation_fn=nn.Tanh
+  activation_fn=nn.Hardtanh
 )
 
 model = PPO('MlpPolicy', env, policy_kwargs=policy_kwargs, verbose=1)

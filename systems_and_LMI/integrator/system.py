@@ -27,9 +27,9 @@ class Integrator():
             [1, 0, 1]
         ])
         self.B = np.array([
-            [0, 0],
-            [self.dt/(self.m*self.l**2), 0],
-            [0, 1]
+            [0],
+            [self.dt/(self.m*self.l**2)],
+            [0]
         ])
         self.Mq = np.array([0, self.g*self.dt/self.l, 0])
 
@@ -72,11 +72,9 @@ class Integrator():
         
         self.bound = 1
         N = block_diag(*self.W)
-        Nux = np.zeros((self.nu + 1, self.nx))
+        Nux = np.zeros((self.nu, self.nx))
         Nuw = N[-self.nu:, self.nx:]
-        Nuw = np.vstack([Nuw, np.zeros((1, self.nphi))])
         Nub = self.b[-1].reshape(self.nu, self.nu)
-        Nub = np.vstack([Nub, -self.constant_reference])
         Nvx = N[:-self.nu, :self.nx]
         Nvw = N[:-self.nu, self.nx:]
         Nvb = np.concatenate([self.b[0], self.b[1], self.b[2]], axis=0).reshape(self.nphi, self.nu)
@@ -147,8 +145,8 @@ class Integrator():
 if __name__ == "__main__":
     s = Integrator()
 
-    thetalim = 60 * np.pi / 180
-    vlim = 5
+    thetalim = 20 * np.pi / 180
+    vlim = 2
     theta0 = np.random.uniform(-thetalim, thetalim)
     v0 = np.random.uniform(-vlim, vlim)
     x0 = np.array([theta0, v0, 0.0])

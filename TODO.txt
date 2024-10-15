@@ -1,2 +1,5 @@
-- Cambiare P (3x3) in una P che ha variabili solo nel primo blocco 2x2 ignorando eta
-- Aggiungere le ellipsoid condition scritte bene
+Pendolo linearizzato, LQR come initial guess per RL
+Anche solo Deep
+
+Linearizza con autograd il closed loop e vedi se è Schur
+
