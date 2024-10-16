@@ -70,7 +70,7 @@ constraints += [M << 0]
 vbar = 1
 alpha = 9 * 1e-4
 
-constraints += [M << -1e-2*np.eye(M.shape[0])]
+constraints += [M << -1e-3*np.eye(M.shape[0])]
 
 # Ellipsoid condition
 for i in range(nlayer-1):
@@ -90,6 +90,7 @@ objective = cp.Minimize(cp.trace(Ptrue))
 # Problem definition
 prob = cp.Problem(objective, constraints)
 
+## A loop that iterates over different cvx
 solved = False
 prob.solve(solver=cp.MOSEK, verbose=True)
 if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infeasible_inaccurate"]:
@@ -99,5 +100,6 @@ if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infea
     print("Max P eigenvalue: ", np.max(np.linalg.eigvals(Ptrue.value)))
     print("Max M eigenvalue: ", np.max(np.linalg.eigvals(M.value)))
     print("Max T eigenvalue: ", np.max(np.linalg.eigvals(T.value)))
+    np.save("P_mat", Ptrue.value)
 else:
     print(f"Mosek failed for alpha of value: {alpha:.7f}")

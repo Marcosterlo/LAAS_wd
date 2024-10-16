@@ -17,7 +17,7 @@ class Integrator():
         self.dt = 0.02
         self.max_torque = 5
         self.max_speed = 8.0
-        self.constant_reference = 0.2
+        self.constant_reference = 0
         self.nx = 3
         self.nu = 1
 
@@ -143,17 +143,25 @@ class Integrator():
 
 if __name__ == "__main__":
     s = Integrator()
+    P = np.load("P_mat.npy")
 
     thetalim = 20 * np.pi / 180
     vlim = 2
-    theta0 = np.random.uniform(-thetalim, thetalim)
-    v0 = np.random.uniform(-vlim, vlim)
-    x0 = np.array([theta0, v0, 0.0])
+
+    inside_ROA = False
+    while not inside_ROA:
+        theta0 = np.random.uniform(-thetalim, thetalim)
+        v0 = np.random.uniform(-vlim, vlim)
+        x0 = np.array([theta0, v0, 0.0])
+        if x0.T @ P @ x0 < 1:
+            print(x0.T @ P @ x0)
+            inside_ROA = True
 
     print(f"Initial state: theta0: {theta0*180/np.pi:.2f}, v0: {v0:.2f}, eta0: {0:.2f}")
 
     steps = 500
     states, inputs = s.loop(x0, steps)
+    
     time_grid = np.linspace(0, steps, steps)
 
     plt.plot(time_grid, states[:, 0] - s.xstar[0])
@@ -165,5 +173,14 @@ if __name__ == "__main__":
     plt.show()
 
     plt.plot(time_grid, states[:, 2])
+    plt.grid(True)
+    plt.show()
+
+    lyap = []
+    xstar = s.xstar.reshape(1, 3)
+    for i in range(steps):
+        lyap.append((states[i].reshape(1,3) - xstar) @ P @ (states[i].reshape(1,3) - xstar).T)      
+    lyap = np.squeeze(lyap)
+    plt.plot(time_grid, lyap)
     plt.grid(True)
     plt.show()

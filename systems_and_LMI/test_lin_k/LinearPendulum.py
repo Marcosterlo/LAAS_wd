@@ -10,13 +10,13 @@ class LinearPendulum():
   def __init__(self):
     self.state = None
     self.g = 9.81
-    self.m = 0.5
+    self.m = 0.15
     self.l = 0.5
     self.mu = 0.05
     self.dt = 0.02
     self.max_torque = 5
     self.max_speed = 8.0
-    self.constant_reference = 0.3
+    self.constant_reference = 0
     self.nx = 3
     self.nu = 1
 
@@ -128,6 +128,8 @@ if __name__ == "__main__":
     vtheta0 = np.random.uniform(-vtheta_lim, vtheta_lim)
     x0 = np.array([[theta0], [vtheta0], [0.0]])
     s.state = x0
+
+    print(f"Initial state: theta0: {theta0*180/np.pi:.2f}, v0: {vtheta0:.2f}, eta0: {0:.2f}")
 
     states = []
     inputs = []

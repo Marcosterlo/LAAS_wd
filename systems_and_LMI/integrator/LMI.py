@@ -11,6 +11,7 @@ R = s.R
 Rw = s.Rw
 Rb = s.Rb
 N = s.N
+C = s.Mq.reshape(3, 1) * 0.001
 Nux = N[0]
 Nuw = N[1]
 Nub = N[2]
@@ -72,19 +73,23 @@ P_mat = cp.bmat([
   [np.hstack([np.zeros(nx), np.zeros(nphi), 0]).reshape(1, nx + nphi + 1)]
 ])
 
-q = np.array([[0],
-             [g/l*dt],
-             [0]]) 
+tau = cp.Parameter()
+tau.value = 1
+lam = cp.Variable((1,1))
 
-global_sec_factor = cp.Variable()
+# M = cp.vstack([Abar.T, (-B @ Nuw @ R).T, C.T]) @ Ptrue @ cp.hstack([Abar, -B @ Nuw @ R, C])- P_mat - Rphi.T @ mat1.T - mat1 @ Rphi -global_sec_factor * Rq.T @ sec_mat @ Rq
 
-M = cp.vstack([Abar.T, (-B @ Nuw @ R).T, q.T]) @ Ptrue @ cp.hstack([Abar, -B @ Nuw @ R, q])- P_mat - Rphi.T @ mat1.T - mat1 @ Rphi -global_sec_factor * Rq.T @ sec_mat @ Rq
+M = cp.bmat([
+  [Abar.T @ Ptrue @ Abar - Ptrue,         -Abar.T @ Ptrue @ B @ Nuw @ R,              Abar.T @ Ptrue @ C],
+  [-R.T @ Nuw.T @ B.T @ Ptrue @ Abar,     R.T @ Nuw.T @ B.T @ Ptrue @ B @ Nuw @ R,    - R.T @ Nuw.T @ B.T @ Ptrue @ C],
+  [C.T @ Ptrue @ Abar,                    -C.T @ Ptrue @ B @ Nuw @ R,                 C.T @ Ptrue @ C]
+]) - tau * (Rphi.T @ mat1.T + mat1 @ Rphi) + lam * Rq.T @ sec_mat @ Rq
 
 ## Constraints
 constraints = [Ptrue >> 0]
 constraints += [T >> 0]
 constraints += [M << 0]
-constraints += [global_sec_factor >= 0]
+constraints += [lam >= 0]
 
 vbar = 1
 alpha = 9 * 1e-4
@@ -101,11 +106,34 @@ for i in range(nlayer-1):
         ])
         constraints += [ellip >> 0]
 
+# Condition number constraint
+lambda_min = cp.Variable()
+constraints += [Ptrue - lambda_min * np.eye(Ptrue.shape[0]) >> 0]
+
+C = cp.Parameter()
+constraints += [C * lambda_min * np.eye(Ptrue.shape[0]) - Ptrue >> 0]
+
 objective = cp.Minimize(cp.trace(Ptrue))
 prob = cp.Problem(objective, constraints)
 
+C.value = 10
+
+P0 = cp.Variable((nx, nx), symmetric=True)
+lambda0_min = cp.Variable()
+C0 = 1
+constraints += [P0 - lambda0_min * np.eye(P0.shape[0]) >> 0]
+constraints += [C0 * lambda0_min * np.eye(P0.shape[0]) - P0 >> 0]
+
+inclusion = cp.bmat([
+  [P0, Ptrue],
+  [Ptrue, Ptrue]
+])
+
+constraints += [inclusion >> 0]
+
+
 prob.solve(solver=cp.MOSEK, verbose=True)
-if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infeasible_inaccurate"]:
+if prob.status not in  ["infeasible", "unbounded", "unbounded_inaccurate", "infeasible_inaccurate"]:
   print(f"\n\n++++++++++++++++++++++++++++++++++++++++++++++\n                  LMI SOLVED\n++++++++++++++++++++++++++++++++++++++++++++++\n\n")
   print("Problem status is " + prob.status)
   print("Max P eigenvalue: ", np.max(np.linalg.eigvals(Ptrue.value)))
