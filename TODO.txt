@@ -1,5 +1,0 @@
-Pendolo linearizzato, LQR come initial guess per RL
-Anche solo Deep
-
-Linearizza con autograd il closed loop e vedi se è Schur
-

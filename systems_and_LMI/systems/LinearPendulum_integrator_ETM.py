@@ -1,4 +1,4 @@
-from LinearPendulum import LinearPendulum
+from LinearPendulum_integrator import LinPendulumIntegrator
 import numpy as np
 import os
 import torch.nn as nn
@@ -6,7 +6,7 @@ import torch
 import matplotlib.pyplot as plt
 
 # New class definition that includes dynamic ETM
-class DyanmicPendulum(LinearPendulum):
+class LinPendulumIntegrator_ETM(LinPendulumIntegrator):
   
   # Calling the constructor of the parent class
   def __init__(self):
@@ -108,7 +108,7 @@ class DyanmicPendulum(LinearPendulum):
     return self.state, u, e, eta
 
 if __name__ == "__main__":
-  s = DyanmicPendulum()
+  s = LinPendulumIntegrator_ETM()
   x0 = np.array([[0.2], [1.0], [0.0]])
   s.state = x0
   
