@@ -22,12 +22,9 @@ nphi = s.nphi
 nx = s.nx
 nu = s.nu
 neurons = [32, 32, 32]
-g = s.g
-l = s.l
-dt = s.dt
 nlayer = s.nlayer
 
-# Variables
+# Variabls
 Ptrue = cp.Variable((nx, nx), symmetric=True)
 transf = cp.bmat([
     [1, 0, 0],
@@ -65,12 +62,11 @@ M = cp.vstack([Abar.T, (-B @ Nuw @ R).T]) @ Ptrue @ cp.hstack([Abar, -B @ Nuw @ 
 ## Constraints
 constraints = [Ptrue >> 0]
 constraints += [T >> 0]
-constraints += [M << 0]
+constraints += [M << -1e-3*np.eye(M.shape[0])]
 
 vbar = 1
 alpha = 9 * 1e-4
 
-constraints += [M << -1e-3*np.eye(M.shape[0])]
 
 # Ellipsoid condition
 for i in range(nlayer-1):
@@ -100,6 +96,5 @@ if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infea
     print("Max P eigenvalue: ", np.max(np.linalg.eigvals(Ptrue.value)))
     print("Max M eigenvalue: ", np.max(np.linalg.eigvals(M.value)))
     print("Max T eigenvalue: ", np.max(np.linalg.eigvals(T.value)))
-    np.save("P_mat", Ptrue.value)
 else:
     print(f"Mosek failed for alpha of value: {alpha:.7f}")

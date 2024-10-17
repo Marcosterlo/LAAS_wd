@@ -123,7 +123,6 @@ class System:
     G = np.linalg.inv(T) @ Z
     # I split it into blocks per each layer
     self.G = np.split(G, indeces)
-    self.block_T = T
     self.T = []
     # I split block diagonal matrix T into blocks for each layer
     for i in range(self.nlayer -1):

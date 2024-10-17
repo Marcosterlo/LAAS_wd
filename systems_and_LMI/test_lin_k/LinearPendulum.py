@@ -10,7 +10,7 @@ class LinearPendulum():
   def __init__(self):
     self.state = None
     self.g = 9.81
-    self.m = 0.15
+    self.m = 0.5
     self.l = 0.5
     self.mu = 0.05
     self.dt = 0.02
@@ -93,6 +93,8 @@ class LinearPendulum():
     wstar2 = wstar[32:64]
     wstar3 = wstar[64:]
     self.wstar = [wstar1, wstar2, wstar3]
+
+    self.neurons = [32, 32, 32]
 
   
   def forward(self):
