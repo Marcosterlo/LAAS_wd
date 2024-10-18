@@ -21,3 +21,9 @@ Docker push command:
 ```
 sudo docker push marcosterlo/ubuntu_env:latest
 ```
+
+# CONDA ALTERNATIVE
+Install the following dependencies inside conda environment to have the same verison of the packages:
+```
+pip3 install numpy torch stable_baselines3 cvxpy control matplotlib scipy mosek
+```
