@@ -75,7 +75,7 @@ for i in range(nlayer-1):
         T_el = T[i*neurons[i] + k, i*neurons[i] + k]
         vcap = np.min([np.abs(-vbar -s.wstar[i][k][0]), np.abs(vbar - s.wstar[i][k][0])], axis=0)
         ellip = cp.bmat([
-            [P_ellip, cp.reshape(Z_el, (3,1))],
+            [Ptrue, cp.reshape(Z_el, (3,1))],
             [cp.reshape(Z_el, (1,3)), cp.reshape(2*alpha*T_el - alpha**2*vcap**(-2), (1, 1))] 
         ])
         constraints += [ellip >> 0]

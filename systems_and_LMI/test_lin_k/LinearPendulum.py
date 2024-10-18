@@ -119,11 +119,24 @@ if __name__ == "__main__":
 
   s = LinearPendulum()
 
-  theta_lim = 60*np.pi/180
+  P = np.load("P.npy")
+
+  ellip = []
+
+  for i in range(1000000):
+    x0 = np.array([[np.random.uniform(-20, 20)], [np.random.uniform(-20, 20)], [0.0]])
+    if ((x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1):
+      ellip.append(x0)
+  
+  ellip = np.squeeze(np.array(ellip))
+
+  theta_lim = 90*np.pi/180
   vtheta_lim = 5
 
   n_steps = 300
-  n_trials = 5
+  n_trials = 20
+
+  x0 = np.array([[np.pi/2], [1.0], [0.0]])
   
   for i in range(n_trials):
     theta0 = np.random.uniform(-theta_lim, theta_lim)
@@ -132,29 +145,44 @@ if __name__ == "__main__":
     s.state = x0
 
     print(f"Initial state: theta0: {theta0*180/np.pi:.2f}, v0: {vtheta0:.2f}, eta0: {0:.2f}")
+    print(f"Is initial state inside ellipsoid? {((x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1)[0][0]}")
 
     states = []
     inputs = []
-
+    lyap = []
 
     for k in range(n_steps):
       state, u = s.step()
       states.append(state)
       inputs.append(u)
+      lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
     
     states = np.array(states)
     inputs = np.array(inputs)
     timegrid = np.linspace(0, n_steps, n_steps)
 
-    plt.plot(timegrid, states[:, 0])
+    # plt.plot(timegrid, states[:, 0])
+    # plt.title("Theta")
+    # plt.grid(True)
+    # plt.show()
+
+    # plt.plot(timegrid, states[:, 1])
+    # plt.title("Vtheta")
+    # plt.grid(True)
+    # plt.show()
+
+    # plt.plot(timegrid, states[:, 2])
+    # plt.title("Eta")
+    # plt.grid(True)
+    # plt.show()
+
+    plt.plot(ellip[:, 0], ellip[:, 1], 'ro')
+    plt.plot(x0[0], x0[1], 'bo', markersize=10)
+    plt.plot(states[:, 0], states[:, 1])
     plt.grid(True)
     plt.show()
 
-    plt.plot(timegrid, states[:, 1])
+    plt.plot(timegrid, np.squeeze(lyap))
+    plt.title("Lyapunov function")
     plt.grid(True)
     plt.show()
-
-    plt.plot(timegrid, states[:, 2])
-    plt.grid(True)
-    plt.show()
-
