@@ -8,17 +8,6 @@ K = np.load("K.npy")
 A = s.A
 B = s.B
 nx = s.nx
-Nux = np.zeros((1, 3))
-Nuw = np.array([[1]])
-Nub = np.array([[0]])
-Nvx = -K
-Nvw = np.array([[0]])
-Nvb = np.array([[0]])
-R = np.linalg.inv(np.eye(Nvw.shape[0]) - Nvw)
-Rw = Nux + Nuw @ R @ Nvx
-Rb = Nuw @ R @ Nvb + Nub
-Abar = A + B @ Rw
-
 nphi = 1
 
 P = cp.Variable((nx, nx), symmetric=True) 
@@ -27,7 +16,7 @@ Z = cp.Variable((nphi, nx))
 
 Rphi = cp.bmat([
     [np.eye(nx), np.zeros((nx, nphi))],
-    [R @ Nvx, np.eye(nphi) - R],
+    [-K, np.array([[0.0]])],
     [np.zeros((nphi, nx)), np.eye(nphi)]
 ])
 
@@ -43,7 +32,7 @@ M = cp.bmat([
 ]) - Rphi.T @ mat.T - mat @ Rphi
 
 constraints = [P >> 0]
-constraints += [T >= 0]
+constraints += [T >> 0]
 constraints += [M << -1e-3*np.eye(M.shape[0])]
 
 vbar = s.max_torque

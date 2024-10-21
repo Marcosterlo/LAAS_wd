@@ -14,7 +14,7 @@ class LinPendulumIntegrator():
     self.l = 0.5
     self.mu = 0.05
     self.dt = 0.02
-    self.max_torque = 1
+    self.max_torque = 5
     self.max_speed = 8.0
     self.constant_reference = 0
     self.nx = 3

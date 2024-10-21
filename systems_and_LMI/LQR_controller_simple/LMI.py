@@ -38,7 +38,7 @@ constraints = [P >> 0]
 constraints += [T >> 0]
 constraints += [M << -1e-3*np.eye(M.shape[0])]
 
-vbar = 1
+vbar = s.max_torque
 alpha = 9 * 1e-4
 
 ellip = cp.bmat([
