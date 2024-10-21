@@ -1,33 +1,23 @@
-from systems_and_LMI.systems.LinearPendulum_integrator import LinPendulumIntegrator
+from systems_and_LMI.systems.LinearPendulum import LinPendulum
 import numpy as np
 import cvxpy as cp
 
-s = LinPendulumIntegrator()
+s = LinPendulum()
 
-K = np.load("K.npy")
+K = np.load('K.npy')
 A = s.A
 B = s.B
 nx = s.nx
-Nux = np.zeros((1, 3))
-Nuw = np.array([[1]])
-Nub = np.array([[0]])
-Nvx = -K
-Nvw = np.array([[0]])
-Nvb = np.array([[0]])
-R = np.linalg.inv(np.eye(Nvw.shape[0]) - Nvw)
-Rw = Nux + Nuw @ R @ Nvx
-Rb = Nuw @ R @ Nvb + Nub
-Abar = A + B @ Rw
 
 nphi = 1
 
-P = cp.Variable((nx, nx), symmetric=True) 
+P = cp.Variable((nx, nx), symmetric=True)
 T = cp.Variable((nphi, nphi))
 Z = cp.Variable((nphi, nx))
 
 Rphi = cp.bmat([
     [np.eye(nx), np.zeros((nx, nphi))],
-    [R @ Nvx, np.eye(nphi) - R],
+    [-K, np.array([[0.0]])],
     [np.zeros((nphi, nx)), np.eye(nphi)]
 ])
 
@@ -36,17 +26,19 @@ mat = cp.bmat([
     [Z, -T, T]
 ])
 
-Ak = A - B @ K
+Ak = A - B @ K 
+
 M = cp.bmat([
     [Ak.T @ P @ Ak - P, -Ak.T @ P @ B],
     [-B.T @ P @ Ak, B.T @ P @ B]
 ]) - Rphi.T @ mat.T - mat @ Rphi
-
+  
+  
 constraints = [P >> 0]
-constraints += [T >= 0]
+constraints += [T >> 0]
 constraints += [M << -1e-3*np.eye(M.shape[0])]
 
-vbar = s.max_torque
+vbar = 1
 alpha = 9 * 1e-4
 
 ellip = cp.bmat([
@@ -61,6 +53,6 @@ prob = cp.Problem(objective, constraints)
 
 prob.solve(solver=cp.MOSEK, verbose=True)
 
-if prob.status not in ["infeasible", "unbounded"]:
-  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}")
-  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+if prob.status not in ['infeasible', 'unbounded']:
+    print(f'Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}')
+    print(f'Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}')

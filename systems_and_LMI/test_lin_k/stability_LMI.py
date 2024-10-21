@@ -1,9 +1,9 @@
 import cvxpy as cp
-from LinearPendulum import LinearPendulum
+from systems_and_LMI.systems.LinearPendulum_integrator import LinPendulumIntegrator
 import numpy as np
 
 # System initialization
-s = LinearPendulum()
+s = LinPendulumIntegrator()
 
 # Values import
 A = s.A
@@ -26,12 +26,6 @@ nlayer = s.nlayer
 
 # Variabls
 Ptrue = cp.Variable((nx, nx), symmetric=True)
-transf = cp.bmat([
-    [1, 0, 0],
-    [0, 1, 0],
-    [0, 0, 0]
-])
-P_ellip =  transf @ Ptrue @ transf
 T_val = cp.Variable(nphi)
 T = cp.diag(T_val)
 Z1 = cp.Variable((neurons[0], nx))
