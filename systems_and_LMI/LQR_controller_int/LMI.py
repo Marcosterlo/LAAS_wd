@@ -9,6 +9,8 @@ A = s.A
 B = s.B
 nx = s.nx
 nphi = 1
+vbar = s.max_torque
+alpha = 1
 
 P = cp.Variable((nx, nx), symmetric=True) 
 T = cp.Variable((nphi, nphi))
@@ -26,22 +28,20 @@ mat = cp.bmat([
 ])
 
 Ak = A - B @ K
+
 M = cp.bmat([
     [Ak.T @ P @ Ak - P, -Ak.T @ P @ B],
     [-B.T @ P @ Ak, B.T @ P @ B]
 ]) - Rphi.T @ mat.T - mat @ Rphi
 
-constraints = [P >> 0]
-constraints += [T >> 0]
-constraints += [M << -1e-3*np.eye(M.shape[0])]
-
-vbar = s.max_torque
-alpha = 9 * 1e-4
-
 ellip = cp.bmat([
     [P, Z.T],
     [Z, cp.reshape(2*alpha*T - alpha**2*vbar**(-2), (1, 1))]
 ])
+
+constraints = [P >> 0]
+constraints += [T >> 0]
+constraints += [M << -1e-3*np.eye(M.shape[0])]
 constraints += [ellip >> 0]
 
 objective = cp.Minimize(cp.trace(P))

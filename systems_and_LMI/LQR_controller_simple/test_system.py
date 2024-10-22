@@ -4,15 +4,19 @@ import matplotlib.pyplot as plt
 
 s = LinPendulum()
 K = np.load("K.npy")
+P = np.load("P.npy")
+ellip = np.load('ellip.npy')
+ellip = ellip[:int(len(ellip) * 0.01)]
 max_torque = s.max_torque
 
 nsteps = 500
 
-n_trials = 20
+n_trials = 5
 
 for i in range(n_trials):
   states = []
   inputs = []
+  lyap = []
   
   theta0 = np.random.uniform(-np.pi, np.pi)
   vtheta = np.random.uniform(-s.max_speed, s.max_speed)
@@ -29,12 +33,15 @@ for i in range(n_trials):
     elif u < -max_torque:
       u = np.array([[-max_torque]])
     s.state = s.A @ s.state + s.B @ u
+    lyap.append(s.state.T @ P @ s.state)
     states.append(s.state)
     inputs.append(u)
   
   states = np.array(states)
   inputs = np.array(inputs)
+  lyap = np.array(lyap)
   
+  plt.plot(ellip[:, 0], ellip[:, 1], 'o')
   plt.plot(x0[0], x0[1], 'bo', markersize=10)
   plt.plot(states[:, 0], states[:, 1])
   plt.xlabel('Theta')
@@ -44,6 +51,7 @@ for i in range(n_trials):
   plt.show()
 
   plt.plot(np.arange(0, nsteps), np.squeeze(inputs))
+  plt.plot(np.arange(0, nsteps), np.squeeze(lyap))
   plt.title('Control inputs')
   plt.grid(True)
   plt.show()
