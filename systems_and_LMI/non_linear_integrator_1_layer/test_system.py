@@ -103,7 +103,7 @@ for i in range(n_trials):
 
   plt.plot(linellip[:, 0], linellip[:, 1], 'o', label="ROA of linear system")
   plt.plot(ellip[:, 0], ellip[:, 1], 'o', label="ROA of non-linear system")
-  plt.ellip(ellip_3layer[:, 0], ellip_3layer[:, 1], 'o', label="ROA of 3 layer non-linear system")
+  plt.plot(ellip_3layer[:, 0], ellip_3layer[:, 1], 'o', label="ROA of 3 layer non-linear system")
   plt.xlabel('Theta')
   plt.ylabel('vtheta')
   plt.title('Reduced state trajectory')
