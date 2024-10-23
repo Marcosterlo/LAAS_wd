@@ -2,8 +2,10 @@ from systems_and_LMI.systems.LinearPendulum_integrator import LinPendulumIntegra
 import numpy as np
 import cvxpy as cp
 
+# Systme initialization
 s = LinPendulumIntegrator()
 
+# Unpacking of the system parameters
 K = np.load("K.npy")
 A = s.A
 B = s.B
@@ -11,11 +13,14 @@ nx = s.nx
 nphi = 1
 vbar = s.max_torque
 alpha = 1
+Ak = A - B @ K
 
+# Variables definition
 P = cp.Variable((nx, nx), symmetric=True) 
 T = cp.Variable((nphi, nphi))
 Z = cp.Variable((nphi, nx))
 
+# Constraint matrices definition
 Rphi = cp.bmat([
     [np.eye(nx), np.zeros((nx, nphi))],
     [-K, np.array([[0.0]])],
@@ -27,7 +32,6 @@ mat = cp.bmat([
     [Z, -T, T]
 ])
 
-Ak = A - B @ K
 
 M = cp.bmat([
     [Ak.T @ P @ Ak - P, -Ak.T @ P @ B],
@@ -39,11 +43,13 @@ ellip = cp.bmat([
     [Z, cp.reshape(2*alpha*T - alpha**2*vbar**(-2), (1, 1))]
 ])
 
+# Constraints definition
 constraints = [P >> 0]
 constraints += [T >> 0]
-constraints += [M << -1e-3*np.eye(M.shape[0])]
+constraints += [M << -1e-6*np.eye(M.shape[0])]
 constraints += [ellip >> 0]
 
+# Objective function definition and problem solving
 objective = cp.Minimize(cp.trace(P))
 
 prob = cp.Problem(objective, constraints)
