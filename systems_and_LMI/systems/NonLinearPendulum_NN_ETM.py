@@ -19,7 +19,7 @@ class NonLinPendulum_NN_ETM(NonLinPendulum_NN):
     self.T = []
     for i in range(self.nlayers - 1):
       self.T.append(T[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
-    self.eta = np.ones(self.nlayers - 1)*0
+    self.eta = np.ones(self.nlayers - 1)*params.eta0
     self.rho = params.rhos
     self.lam = params.lambdas
     self.last_w = []

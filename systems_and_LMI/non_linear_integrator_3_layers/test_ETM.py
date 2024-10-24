@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 s = NonLinPendulum_NN_ETM()
-nsteps = 10000
+nsteps = 2000
 P = np.load('P.npy')
 
 states = []
@@ -17,11 +17,12 @@ while not in_ellip:
   theta0 = np.random.uniform(-np.pi/2, np.pi/2)
   vtheta0 = np.random.uniform(-s.max_speed, s.max_speed)
   x0 = np.array([[theta0], [vtheta0], [0.0]])
-
   if ((x0).T @ P @ (x0) <= 1):
     in_ellip = True
-s.state = x0
-s.constant_reference = 0.005
+    s.state = x0
+  
+print(f"Initial state: theta_0: {theta0:.2f}, vtheta_0: {vtheta0:.2f}")
+s.constant_reference = 0.0
 
 for i in range(nsteps):
   state, u, e, eta = s.step() 
