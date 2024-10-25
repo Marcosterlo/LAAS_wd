@@ -90,7 +90,6 @@ axs[3].set_xlabel('Time steps')
 axs[3].set_ylabel('Values')
 axs[3].legend()
 axs[3].grid(True)
-
 plt.show()
 
 plt.plot(np.arange(0, nsteps), np.squeeze(etas[:, 0]), label='Eta_1')
