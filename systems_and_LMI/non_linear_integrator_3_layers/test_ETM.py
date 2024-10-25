@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 s = NonLinPendulum_NN_ETM()
-nsteps = 2000
+nsteps = 100
 P = np.load('P.npy')
 
 states = []
@@ -14,22 +14,30 @@ lyap = []
 
 in_ellip = False
 while not in_ellip:
+  ref = np.random.uniform(-0.1, 0.1)
   theta0 = np.random.uniform(-np.pi/2, np.pi/2)
   vtheta0 = np.random.uniform(-s.max_speed, s.max_speed)
   x0 = np.array([[theta0], [vtheta0], [0.0]])
-  if ((x0).T @ P @ (x0) <= 1):
+  x0p = np.array([[theta0 + ref], [vtheta0], [0.0]])
+  if ((x0).T @ P @ (x0) <= 1) and ((x0p).T @ P @ (x0p) <= 1):
     in_ellip = True
     s.state = x0
+    s.constant_reference = ref
   
-print(f"Initial state: theta_0: {theta0:.2f}, vtheta_0: {vtheta0:.2f}")
-s.constant_reference = 0.0
+# Initial state that is guaranteed to behave nicely
+# theta0 = 0.07
+# vtheta0 = -0.64
+# x0 = np.array([[theta0], [vtheta0], [0.0]])
+# s.state = x0
+# s.constant_reference = 0.01
+print(f"Initial state: theta_0: {theta0:.2f}, vtheta_0: {vtheta0:.2f}, constant disturbance: {ref:.2f}")
 
 for i in range(nsteps):
   state, u, e, eta = s.step() 
   states.append(state)
   inputs.append(u)
   events.append(e)
-  lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
+  lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
   etas.append(eta)
 
 states = np.array(states)
@@ -88,6 +96,11 @@ plt.show()
 plt.plot(np.arange(0, nsteps), np.squeeze(etas[:, 0]), label='Eta_1')
 plt.plot(np.arange(0, nsteps), np.squeeze(etas[:, 1]), label='Eta_2')
 plt.plot(np.arange(0, nsteps), np.squeeze(etas[:, 2]), label='Eta_3')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+plt.plot(np.arange(0, nsteps), np.squeeze(lyap), label='Lyapunov function')
 plt.legend()
 plt.grid(True)
 plt.show()

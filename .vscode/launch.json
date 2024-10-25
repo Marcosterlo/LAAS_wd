@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/systems_and_LMI/non_linear_interator_3_layers"
+      "cwd": "${workspaceFolder}/systems_and_LMI/non_linear_integrator_3_layers"
     }
   ]
 }
