@@ -50,19 +50,35 @@ Z3 = cp.Variable((neurons[2], nx))
 Z = cp.vstack([Z1, Z2, Z3])
 
 # Constraint matrices definition
+
+# Rphi matrix to take into account reference r
+# Rphi = cp.bmat([
+#     [np.eye(nx), np.zeros((nx, nphi)), np.zeros((nx, nq)), np.zeros((nx, nr))],
+#     [R @ Nvx, np.eye(R.shape[0]) - R, np.zeros((nphi, nq)), np.zeros((nphi, nr))],
+#     [np.zeros((nphi, nx)), np.eye(nphi), np.zeros((nphi, nq)), np.zeros((nphi, nr))],
+#     [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq), np.zeros((nq, nr))],
+#     [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nr, nq)), np.eye(nr)]
+# ])
+
 Rphi = cp.bmat([
-    [np.eye(nx), np.zeros((nx, nphi)), np.zeros((nx, nq)), np.zeros((nx, nr))],
-    [R @ Nvx, np.eye(R.shape[0]) - R, np.zeros((nphi, nq)), np.zeros((nphi, nr))],
-    [np.zeros((nphi, nx)), np.eye(nphi), np.zeros((nphi, nq)), np.zeros((nphi, nr))],
-    [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq), np.zeros((nq, nr))],
-    [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nr, nq)), np.eye(nr)]
+    [np.eye(nx), np.zeros((nx, nphi)), np.zeros((nx, nq))],
+    [R @ Nvx, np.eye(R.shape[0]) - R, np.zeros((nphi, nq))],
+    [np.zeros((nphi, nx)), np.eye(nphi), np.zeros((nphi, nq))],
+    [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq)]
 ])
 
+# M1 matrix to take into account reference r
+# M1 = cp.bmat([
+#   [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi)), np.zeros((nx, nq)), np.zeros((nx, nr))],
+#   [Z, -T , T, np.zeros((nphi, nq)), np.zeros((nphi, nr))],
+#   [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.zeros((nq, nphi)), np.zeros((nq, nq)), np.zeros((nq, nr))],
+#   [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nr, nphi)), np.zeros((nr, nq)), np.zeros((nr, nr))]
+# ])
+
 M1 = cp.bmat([
-  [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi)), np.zeros((nx, nq)), np.zeros((nx, nr))],
-  [gamma * Z, -gamma @ T , gamma @ T, np.zeros((nphi, nq)), np.zeros((nphi, nr))],
-  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.zeros((nq, nphi)), np.zeros((nq, nq)), np.zeros((nq, nr))],
-  [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nr, nphi)), np.zeros((nr, nq)), np.zeros((nr, nr))]
+  [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi)), np.zeros((nx, nq))],
+  [gamma @ Z, -gamma @ T , gamma @ T, np.zeros((nphi, nq))],
+  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.zeros((nq, nphi)), np.zeros((nq, nq))]
 ])
 
 Sinsec = cp.bmat([
@@ -70,11 +86,18 @@ Sinsec = cp.bmat([
   [-1.0, -2.0]
 ])
 
+# Rs matrix to take into account reference r
+# Rs = cp.bmat([
+#   [np.array([[1.0, 0.0, 0.0]]), np.zeros((1, nphi)), np.zeros((1, nq)), np.zeros((1, nr))],
+#   [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq), np.zeros((nq, nr))],
+# ])
+
 Rs = cp.bmat([
-  [np.array([[1.0, 0.0, 0.0]]), np.zeros((1, nphi)), np.zeros((1, nq)), np.zeros((1, nr))],
-  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq), np.zeros((nq, nr))],
+  [np.array([[1.0, 0.0, 0.0]]), np.zeros((1, nphi)), np.zeros((1, nq))],
+  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq)],
 ])
 
+# M version with null D contribute but augmented dimension
 # M = cp.bmat([
 #   [Abar.T @ P @ Abar - P, Abar.T @ P @ Bbar, Abar.T @ P @ C, np.zeros((nx, nr))],
 #   [Bbar.T @ P @ Abar, Bbar.T @ P @ Bbar, Bbar.T @ P @ C, np.zeros((nphi, nr))],
@@ -82,17 +105,24 @@ Rs = cp.bmat([
 #   [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nq, nr)), np.zeros((nr, nr))]
 # ]) - M1 @ Rphi - Rphi.T @ M1.T + Rs.T @ Sinsec @ Rs
 
+# M version with D matrix
+# M = cp.bmat([
+#   [Abar.T @ P @ Abar - P, Abar.T @ P @ Bbar, Abar.T @ P @ C, Abar.T @ P @ D],
+#   [Bbar.T @ P @ Abar, Bbar.T @ P @ Bbar, Bbar.T @ P @ C, Bbar.T @ P @ D],
+#   [C.T @ P @ Abar, C.T @ P @ Bbar, C.T @ P @ C, C.T @ P @ D],
+#   [D.T @ P @ Abar, D.T @ P @ Bbar, D.T @ P @ C, D.T @ P @ D]
+# ]) - M1 @ Rphi - Rphi.T @ M1.T + Rs.T @ Sinsec @ Rs
+
 M = cp.bmat([
-  [Abar.T @ P @ Abar - P, Abar.T @ P @ Bbar, Abar.T @ P @ C, Abar.T @ P @ D],
-  [Bbar.T @ P @ Abar, Bbar.T @ P @ Bbar, Bbar.T @ P @ C, Bbar.T @ P @ D],
-  [C.T @ P @ Abar, C.T @ P @ Bbar, C.T @ P @ C, C.T @ P @ D],
-  [D.T @ P @ Abar, D.T @ P @ Bbar, D.T @ P @ C, D.T @ P @ D]
+  [Abar.T @ P @ Abar - P, Abar.T @ P @ Bbar, Abar.T @ P @ C],
+  [Bbar.T @ P @ Abar, Bbar.T @ P @ Bbar, Bbar.T @ P @ C],
+  [C.T @ P @ Abar, C.T @ P @ Bbar, C.T @ P @ C]
 ]) - M1 @ Rphi - Rphi.T @ M1.T + Rs.T @ Sinsec @ Rs
 
 # Constraints definition
 constraints = [P >> 0]
 constraints += [T >> 0]
-constraints += [M << 0]
+constraints += [M << -1e-6*np.eye(M.shape[0])]
 
 # Ellipsoid conditions
 for i in range(nlayer - 1):
