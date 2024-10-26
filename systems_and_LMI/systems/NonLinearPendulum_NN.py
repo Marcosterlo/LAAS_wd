@@ -8,8 +8,8 @@ from scipy.linalg import block_diag
 # New class definition that includes the NN controller
 class NonLinPendulum_NN(NonLinPendulum):
   
-  def __init__(self):
-    super().__init__()
+  def __init__(self, reference=0.0):
+    super().__init__(reference)
 
     # VERY IMPORTANT PARAMETER, the training has been done with nn.Hardtanh that works with -1 and 1. If you want to change it you need to change the whole controller and train it again
     self.bound = 1
@@ -75,11 +75,7 @@ class NonLinPendulum_NN(NonLinPendulum):
     Rb = Nuw @ R @ Nvb + Nub
     self.Rb = Rb
 
-    # Equilibria computation    
-    xstar = np.linalg.inv(np.eye(self.A.shape[0]) - self.A - self.B @ Rw) @ self.B @ Rb
-    self.xstar = xstar
-
-    wstar = R @ Nvx @ xstar + R @ Nvb
+    wstar = R @ Nvx @ self.xstar + R @ Nvb
     wstar1 = wstar[:32]
     wstar2 = wstar[32:64]
     wstar3 = wstar[64:]
@@ -105,11 +101,9 @@ class NonLinPendulum_NN(NonLinPendulum):
     # Compute the non-linear term
     nonlin = np.sin(self.state[0]) - self.state[0]
     # Compute the state update
-    self.state = self.A @ self.state + self.B @ u + self.C * nonlin
-    # Adds the constant reference to the integral term
-    self.state[2] += -self.constant_reference
+    self.state = self.A @ self.state + self.B @ u + self.C * nonlin + self.D * self.constant_reference
     return self.state, u
   
 if __name__ == "__main__":
 
-  s = NonLinPendulum_NN()
+  s = NonLinPendulum_NN(0.3)

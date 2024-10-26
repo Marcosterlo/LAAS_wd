@@ -9,8 +9,8 @@ s = NonLinPendulum_NN()
 # Parameters unpacking
 A = s.A
 B = s.B
-B = np.hstack([B, np.array([[0.], [0.], [1.]])])
 C = s.C
+D = s.D
 nx = s.nx
 nu = s.nu
 nphi = s.nphi
@@ -19,11 +19,8 @@ neurons = s.neurons
 nlayer = s.nlayer
 N = s.N
 Nux = N[0]
-Nux = np.vstack([Nux, np.zeros((1, Nux.shape[1]))])
 Nuw = N[1]
-Nuw = np.vstack([Nuw, np.zeros((1, Nuw.shape[1]))])
 Nub = N[2]
-Nub = np.vstack([Nub, np.zeros((1, Nub.shape[1]))])
 Nvx = N[3]
 Nvw = N[4]
 Nvb = N[5]
@@ -31,6 +28,7 @@ R = s.R
 Rw = Nux + Nuw @ R @ Nvx
 Rb = Nuw @ R @ Nvb + Nub
 nq = 1
+nr = 1
 gammavec = np.concatenate([params.gammas[i] * np.ones(neurons[i]) for i in range(nlayer - 1)])
 gamma = cp.diag(gammavec)
 
@@ -53,16 +51,18 @@ Z = cp.vstack([Z1, Z2, Z3])
 
 # Constraint matrices definition
 Rphi = cp.bmat([
-    [np.eye(nx), np.zeros((nx, nphi)), np.zeros((nx, nq))],
-    [R @ Nvx, np.eye(R.shape[0]) - R, np.zeros((nphi, nq))],
-    [np.zeros((nphi, nx)), np.eye(nphi), np.zeros((nphi, nq))],
-    [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq)]
+    [np.eye(nx), np.zeros((nx, nphi)), np.zeros((nx, nq)), np.zeros((nx, nr))],
+    [R @ Nvx, np.eye(R.shape[0]) - R, np.zeros((nphi, nq)), np.zeros((nphi, nr))],
+    [np.zeros((nphi, nx)), np.eye(nphi), np.zeros((nphi, nq)), np.zeros((nphi, nr))],
+    [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq), np.zeros((nq, nr))],
+    [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nr, nq)), np.eye(nr)]
 ])
 
 M1 = cp.bmat([
-  [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi)), np.zeros((nx, nq))],
-  [gamma * Z, -gamma @ T , gamma @ T, np.zeros((nphi, nq))],
-  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.zeros((nq, nphi)), np.zeros((nq, nq))]
+  [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi)), np.zeros((nx, nq)), np.zeros((nx, nr))],
+  [gamma * Z, -gamma @ T , gamma @ T, np.zeros((nphi, nq)), np.zeros((nphi, nr))],
+  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.zeros((nq, nphi)), np.zeros((nq, nq)), np.zeros((nq, nr))],
+  [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nr, nphi)), np.zeros((nr, nq)), np.zeros((nr, nr))]
 ])
 
 Sinsec = cp.bmat([
@@ -71,20 +71,28 @@ Sinsec = cp.bmat([
 ])
 
 Rs = cp.bmat([
-  [np.array([[1.0, 0.0, 0.0]]), np.zeros((1, nphi)), np.zeros((1, nq))],
-  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq)]
+  [np.array([[1.0, 0.0, 0.0]]), np.zeros((1, nphi)), np.zeros((1, nq)), np.zeros((1, nr))],
+  [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.eye(nq), np.zeros((nq, nr))],
 ])
 
+# M = cp.bmat([
+#   [Abar.T @ P @ Abar - P, Abar.T @ P @ Bbar, Abar.T @ P @ C, np.zeros((nx, nr))],
+#   [Bbar.T @ P @ Abar, Bbar.T @ P @ Bbar, Bbar.T @ P @ C, np.zeros((nphi, nr))],
+#   [C.T @ P @ Abar, C.T @ P @ Bbar, C.T @ P @ C, np.zeros((nq, nr))],
+#   [np.zeros((nr, nx)), np.zeros((nr, nphi)), np.zeros((nq, nr)), np.zeros((nr, nr))]
+# ]) - M1 @ Rphi - Rphi.T @ M1.T + Rs.T @ Sinsec @ Rs
+
 M = cp.bmat([
-  [Abar.T @ P @ Abar - P, Abar.T @ P @ Bbar, Abar.T @ P @ C],
-  [Bbar.T @ P @ Abar, Bbar.T @ P @ Bbar, Bbar.T @ P @ C],
-  [C.T @ P @ Abar, C.T @ P @ Bbar, C.T @ P @ C]
+  [Abar.T @ P @ Abar - P, Abar.T @ P @ Bbar, Abar.T @ P @ C, Abar.T @ P @ D],
+  [Bbar.T @ P @ Abar, Bbar.T @ P @ Bbar, Bbar.T @ P @ C, Bbar.T @ P @ D],
+  [C.T @ P @ Abar, C.T @ P @ Bbar, C.T @ P @ C, C.T @ P @ D],
+  [D.T @ P @ Abar, D.T @ P @ Bbar, D.T @ P @ C, D.T @ P @ D]
 ]) - M1 @ Rphi - Rphi.T @ M1.T + Rs.T @ Sinsec @ Rs
 
 # Constraints definition
 constraints = [P >> 0]
 constraints += [T >> 0]
-constraints += [M << -1e-6 * np.eye(M.shape[0])]
+constraints += [M << 0]
 
 # Ellipsoid conditions
 for i in range(nlayer - 1):

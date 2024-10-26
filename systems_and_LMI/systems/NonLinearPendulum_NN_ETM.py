@@ -7,8 +7,8 @@ import torch
 
 class NonLinPendulum_NN_ETM(NonLinPendulum_NN):
   
-  def __init__(self):
-    super().__init__()
+  def __init__(self, reference=0.0):
+    super().__init__(reference)
 
     Z_name = os.path.abspath(__file__ + '/../nonlin_dynamic_ETM/Z.npy')
     T_name = os.path.abspath(__file__ + '/../nonlin_dynamic_ETM/T.npy')
@@ -67,14 +67,13 @@ class NonLinPendulum_NN_ETM(NonLinPendulum_NN):
   def step(self):
     u, e = self.forward()
     nonlin = np.sin(self.state[0]) - self.state[0]
-    self.state = self.A @ self.state + self.B * u + self.C * nonlin
-    self.state[2] += -self.constant_reference
+    self.state = self.A @ self.state + self.B * u + self.C * nonlin + self.D * self.constant_reference
     # Copy of eta since it apparently returns a pointer to the class parameter
     etaval = self.eta.tolist()
     return self.state, u, e, etaval
 
 if __name__ == "__main__":
   
-  s = NonLinPendulum_NN_ETM()
+  s = NonLinPendulum_NN_ETM(0.3)
   x0 = np.array([[np.pi/3], [1.0], [0.0]])
   s.state = x0

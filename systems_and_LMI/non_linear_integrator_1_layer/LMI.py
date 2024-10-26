@@ -10,6 +10,7 @@ K = s.K
 A = s.A
 B = s.B
 C = s.C
+D = s.D
 nx = s.nx
 nphi = 1
 vbar = s.max_torque
@@ -68,7 +69,7 @@ M = cp.bmat([
 constraints = [P >> 0]
 constraints += [T >> 0]
 constraints += [ellip >> 0]
-constraints += [M << -1e-6 * np.eye(M.shape[0])]
+constraints += [M << -1e-8*np.eye(M.shape[0])]
 
 # Objective function definition and problem solution
 objective = cp.Minimize(cp.trace(P))

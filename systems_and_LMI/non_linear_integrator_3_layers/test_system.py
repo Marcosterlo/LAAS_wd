@@ -3,12 +3,11 @@ import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
-s = NonLinPendulum_NN()
+ref = 0.0
+
+s = NonLinPendulum_NN(ref)
 P = np.load('P.npy')
 ellip = np.load('../non_linear_integrator_1_layer/3layerellip.npy')
-
-s.constant_reference = 0.0
-s.xstar[0] += s.constant_reference
 
 nsteps = 500
 n_trials = 1
@@ -26,7 +25,6 @@ for i in range(n_trials):
     x0 = np.array([[theta0], [vtheta0], [0.0]])
     if ((x0).T @ P @ (x0) <= 1):
       in_ellip = True
-    x0 = np.array([[theta0], [vtheta0], [3.0]])
       
   print(f'Initial state: theta_0: {theta0*180/np.pi:.2f}, v_0: {vtheta0:.2f}, eta_0: {0:.2f}')
   print(f'Is initial point inside ROA? {((x0).T @ P @ (x0) <= 1)[0][0]}')
@@ -54,6 +52,27 @@ for i in range(n_trials):
   plt.grid(True)
   plt.show()
 
+  # plt.plot(np.arange(0, nsteps + 1), states[:, 0] - s.xstar[0])
+  # plt.xlabel('Time steps')
+  # plt.xlabel('Positon')
+  # plt.title('Position plot')
+  # plt.grid(True)
+  # plt.show()
+
+  # plt.plot(np.arange(0, nsteps + 1), states[:, 1] - s.xstar[1])
+  # plt.xlabel('Time steps')
+  # plt.xlabel('Velocity')
+  # plt.title('Velocity plot')
+  # plt.grid(True)
+  # plt.show()
+
+  # plt.plot(np.arange(0, nsteps + 1), states[:, 2] - s.xstar[2])
+  # plt.xlabel('Time steps')
+  # plt.xlabel('Eta evolution')
+  # plt.title('Integrator plot')
+  # plt.grid(True)
+  # plt.show()
+
   plt.plot(np.arange(0, nsteps), np.squeeze(inputs), label='Control input')
   plt.plot(np.arange(0, nsteps), np.squeeze(lyap), label='Lyapunov function')
   plt.xlabel('Time steps')
@@ -73,21 +92,4 @@ for i in range(n_trials):
   ax.set_ylabel('Vtheta')
   ax.set_zlabel('Eta')
   ax.set_title('3D plot of ellip')
-  plt.show()
-
-  x = np.linspace(-20, 20, 100)
-  v = np.linspace(-20, 20, 100)
-  X, V = np.meshgrid(x, v)
-  ell = np.zeros_like(X)
-  for i in range(X.shape[0]):
-    for j in range(X.shape[1]):
-        vec = np.array([[X[i, j]], [V[i, j]], [0.0]])
-        val = (vec).T @ P @ (vec)
-        ell[i, j] = val
-  
-  plt.contour(X, V, ell, levels=[1])
-  plt.plot(x0[0], x0[1], 'bo', markersize=10)
-  plt.plot(states[:, 0], states[:, 1])
-  plt.plot(s.xstar[0], s.xstar[1], 'ro', markersize=10)
-  plt.grid(True)
   plt.show()
