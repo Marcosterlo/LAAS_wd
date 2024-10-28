@@ -7,7 +7,7 @@ ref = 0.0
 
 s = NonLinPendulum_NN(ref)
 P = np.load('P.npy')
-ellip = np.load('../non_linear_integrator_1_layer/3layerellip.npy')
+# ellip = np.load('../non_linear_integrator_1_layer/3layerellip.npy')
 
 nsteps = 500
 n_trials = 1
@@ -42,7 +42,7 @@ for i in range(n_trials):
   inputs = np.array(inputs)
   lyap = np.array(lyap)
   
-  plt.plot(ellip[:, 0], ellip[:, 1], 'o')
+  # plt.plot(ellip[:, 0], ellip[:, 1], 'o')
   plt.plot(x0[0], x0[1], 'bo', markersize=10)
   plt.plot(states[:, 0], states[:, 1])
   plt.plot(s.xstar[0], s.xstar[1], 'ro', markersize=10)
@@ -84,7 +84,7 @@ for i in range(n_trials):
 
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
-  ax.plot(ellip[:, 0], ellip[:, 1], ellip[:, 2], 'o')
+  # ax.plot(ellip[:, 0], ellip[:, 1], ellip[:, 2], 'o')
   ax.plot(x0[0], x0[1], x0[2], 'o', markersize=10)
   ax.plot(s.xstar[0], s.xstar[1], s.xstar[2], 'o', markersize=10)
   ax.plot(states[:, 0], states[:, 1], states[:, 2])

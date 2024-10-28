@@ -31,7 +31,7 @@ class NonLinPendulum(LinPendulumIntegrator):
       I = np.eye(self.A.shape[0])
       rhs = np.squeeze(np.linalg.inv(I - self.A - self.B @ self.Rw) @ (self.B @ self.Rb + self.C * (np.sin(x0) - x0) + self.D * self.constant_reference))
       return x - rhs
-    
+     
     self.xstar = fsolve(implicit_function, np.array([[0.0], [0.0], [0.0]])).reshape(3,1)
 
     # Get the directory of the current file

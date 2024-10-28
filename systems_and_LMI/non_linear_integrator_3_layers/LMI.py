@@ -78,6 +78,12 @@ constraints += [T >> 0]
 constraints += [M << -1e-6 * np.eye(M.shape[0])]
 
 # Ellipsoid conditions
+# doesn´t work alpha = 0.02805
+# alpha = 0.0281 -> P = 80
+# alpha = 0.03 -> P = 37
+# alpha = 0.04 -> P = 22
+# alpha = 0.08 -> P = 25-i
+alpha = 0.04
 for i in range(nlayer - 1):
   for k in range(neurons[i]):
     Z_el = Z[i*neurons[i] + k]
@@ -85,7 +91,7 @@ for i in range(nlayer - 1):
     vcap = np.min([np.abs(-vbar - s.wstar[i][k][0]), np.abs(vbar - s.wstar[i][k][0])], axis=0)
     ellip = cp.bmat([
         [P, cp.reshape(Z_el, (nx ,1))],
-        [cp.reshape(Z_el, (1, nx)), cp.reshape(2*T_el - vcap**(-2), (1, 1))] 
+        [cp.reshape(Z_el, (1, nx)), cp.reshape(2*alpha*T_el - alpha**2*vcap**(-2), (1, 1))] 
     ])
     constraints += [ellip >> 0]
 
