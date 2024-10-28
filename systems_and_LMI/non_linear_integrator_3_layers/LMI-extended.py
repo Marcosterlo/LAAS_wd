@@ -35,6 +35,8 @@ gamma = cp.diag(gammavec)
 # Auxiliary parameters
 Abar = A + B @ Rw
 Bbar = -B @ Nuw @ R
+Ck = np.zeros((nphi, nx))
+Ck[:, 0] = 1.0
 
 # Variables definition
 P = cp.Variable((nx, nx), symmetric=True)
@@ -43,6 +45,9 @@ rho = cp.Variable((1, 1))
 
 T_val = cp.Variable(nphi)
 T = cp.diag(T_val)
+
+Omega_val = cp.Variable(nphi)
+Omega = cp.diag(Omega_val)
 
 Z1 = cp.Variable((neurons[0], nx))
 Z2 = cp.Variable((neurons[1], nx))
@@ -76,7 +81,7 @@ Rphi = cp.bmat([
 # ])
 
 M1 = cp.bmat([
-  [np.zeros((nx, nx)), np.zeros((nx, nphi)), np.zeros((nx, nphi)), np.zeros((nx, nq))],
+  [-Ck.T @ gamma @ Omega @ Ck, np.zeros((nx, nphi)), np.zeros((nx, nphi)), np.zeros((nx, nq))],
   [gamma @ Z, -gamma @ T , gamma @ T, np.zeros((nphi, nq))],
   [np.zeros((nq, nx)), np.zeros((nq, nphi)), np.zeros((nq, nphi)), np.zeros((nq, nq))]
 ])
@@ -122,16 +127,11 @@ M = cp.bmat([
 # Constraints definition
 constraints = [P >> 0]
 constraints += [T >> 0]
+constraints += [Omega >> 0]
 constraints += [M << -1e-6*np.eye(M.shape[0])]
 
 # Ellipsoid conditions
-# alpha = 0.05 -> P = 23
-# alpha = 0.04 -> P = 21.7
-# alpha = 0.03 -> P = 22
-# alpha = 0.025 -> P = 28
-# alpha = 0.022 -> P = 56
-# alpha = 0.021 doesn´t work
-alpha = 0.04
+alpha = cp.Parameter()
 for i in range(nlayer - 1):
   for k in range(neurons[i]):
     Z_el = Z[i*neurons[i] + k]
@@ -146,10 +146,58 @@ for i in range(nlayer - 1):
 # Objective function definiton and problem solution
 objective = cp.Minimize(cp.trace(P))
 
+# Problem definition
 prob = cp.Problem(objective, constraints)
 
-prob.solve(solver=cp.MOSEK, verbose=True)
+# Initialization of parameter alpha to 1, the most conservative case 
+alpha.value = 1
+# Initialization of the variables used to perform the bisection
+last_bad = 0
+last_good = alpha.value
+# Initialization of the variable used to compare the goodness of the solutions
+last_P_eig = 1e5
+# Flag variable to chck if the run has terminated due to an error
+error = False
 
-if prob.status not in ['infeasible', 'unbounded']:
-  print(f"Max P eigenvalue: {np.max(np.linalg.eigvals(P.value))}")
-  print(f'Max M eigenvalue: {np.max(np.linalg.eigvals(M.value))}')
+try:
+  # Iter many times to perform the bisection trying to maximize the ROA
+  for i in range(100):
+
+    # Problem solution
+    prob.solve(solver=cp.MOSEK, verbose=False)
+
+    # Feasible solution
+    if prob.status not in ["infeasible", "unbounded", "unknown"]:
+      # Maximum eigenvalue of P is smaller the bigger the ROA is
+      P_eig = np.max(np.linalg.eigvals(P.value))
+      # If the solution is worse than the previous one
+      if P_eig > last_P_eig:
+        print(f"Feasible but smaller ROA, alpha: {alpha.value}")
+        last_bad = alpha.value
+        alpha.value = alpha.value + (last_good - last_bad)/8
+      else:
+        print(f"\n ==================== \nMax eigenvalue of P: {P_eig}")
+        print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+        print(f"Current alpha value: {alpha.value}\n ==================== \n")
+        last_good = alpha.value
+        last_P_eig = P_eig
+        alpha.value = alpha.value - (last_good - last_bad)/8
+        last_P = P.value
+        last_M = M.value
+    else:
+      print(f"Infeasible or unbounded, alpha: {alpha.value}")
+      last_bad = alpha.value
+      alpha.value = alpha.value + (last_good - last_bad)/8
+
+except cp.error.SolverError:
+  error = True
+  print("Solver encountered an error, retrieving last feasible solution")
+  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(last_P))}")
+  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(last_M))}")
+  print(f"Final alpha value: {last_good}")
+
+if not error:
+  print(f"\nMax n of iterations reached, retrieving last feasible solution")
+  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(last_P))}")
+  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(last_M))}")
+  print(f"Final alpha value: {last_good}")

@@ -65,6 +65,7 @@ inclusion = cp.bmat([
 # constraints += [inclusion >> 0]
 
 # Ellipsoid condition
+alpha = cp.Parameter()
 for i in range(nlayer-1):
     for k in range(neurons):
         Z_el = Z[i*neurons + k]
@@ -109,7 +110,7 @@ M = cp.vstack([Abar.T, (-B @ Nuw @ R).T]) @ P @ cp.hstack([Abar, -B @ Nuw @ R]) 
 ]) + Rphi.T @ mat.T + mat @ Rphi
 
 
-constraints += [M << -1e-4 * np.eye(M.shape[0])]
+constraints += [M << -1e-6 * np.eye(M.shape[0])]
 constraints += [M + rho * np.eye(M.shape[0]) >> 0]
 
 # Optimization condition
@@ -118,29 +119,55 @@ objective = cp.Minimize(rho)
 # Problem definition
 prob = cp.Problem(objective, constraints)
 
-# Problem resolution
-solved = False
-prob.solve(solver=cp.MOSEK, verbose=True)
-if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infeasible_inaccurate"]:
-    solved = True
-else:
-    print("Mosek failed")
+# Initialization of parameter alpha to 1, the most conservative case 
+alpha.value = 1
+# Initialization of the variables used to perform the bisection
+last_bad = 0
+last_good = alpha.value
+# Initialization of the variable used to compare the goodness of the solutions
+last_P_eig = 1e5
+# Flag variable to chck if the run has terminated due to an error
+error = False
 
-if not solved:
-    prob.solve(solver=cp.SCS, verbose=True)
+try:
+  # Iter many times to perform the bisection trying to maximize the ROA
+  for i in range(100):
 
-if prob.status not in  ["infeasible", "ubounded", "unbounded_inaccurate", "infeasible_inaccurate"]:
-    solved = True
+    # Problem solution
+    prob.solve(solver=cp.MOSEK, verbose=False)
 
-if solved:
-    print("Problem status is " + prob.status)
-    print("Max P eigenvalue: ", np.max(np.linalg.eigvals(P.value)))
-    print("Max M eigenvalue: ", np.max(np.linalg.eigvals(M.value)))
-    print("Max T eigenvalue: ", np.max(np.linalg.eigvals(T.value)))
+    # Feasible solution
+    if prob.status not in ["infeasible", "unbounded", "unknown"]:
+      # Maximum eigenvalue of P is smaller the bigger the ROA is
+      P_eig = np.max(np.linalg.eigvals(P.value))
+      # If the solution is worse than the previous one
+      if P_eig > last_P_eig:
+        print(f"Feasible but smaller ROA, alpha: {alpha.value}")
+        last_bad = alpha.value
+        alpha.value = alpha.value + (last_good - last_bad)/8
+      else:
+        print(f"\n ==================== \nMax eigenvalue of P: {P_eig}")
+        print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+        print(f"Current alpha value: {alpha.value}\n ==================== \n")
+        last_good = alpha.value
+        last_P_eig = P_eig
+        alpha.value = alpha.value - (last_good - last_bad)/8
+        last_P = P.value
+        last_M = M.value
+    else:
+      print(f"Infeasible or unbounded, alpha: {alpha.value}")
+      last_bad = alpha.value
+      alpha.value = alpha.value + (last_good - last_bad)/8
 
-    # Saving matrices to npy file
-    # np.save("P_mat", P.value)
-    # np.save("Z_mat", Z.value)
-    # np.save("T_mat", T.value)
-else:
-    print("=========== Unfeasible problem =============")
+except cp.error.SolverError:
+  error = True
+  print("Solver encountered an error, retrieving last feasible solution")
+  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(last_P))}")
+  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(last_M))}")
+  print(f"Final alpha value: {last_good}")
+
+if not error:
+  print(f"\n Max n of iterations reached, retrieving last feasible solution")
+  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(last_P))}")
+  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(last_M))}")
+  print(f"Final alpha value: {last_good}")

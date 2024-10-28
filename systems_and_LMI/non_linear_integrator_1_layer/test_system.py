@@ -2,23 +2,28 @@ from systems_and_LMI.systems.NonLinearPendulum import NonLinPendulum
 import numpy as np
 import matplotlib.pyplot as plt
 
-ref = 0.1
+ref = 0.0
 s = NonLinPendulum(ref)
 P = np.load('P.npy')
 
 # Script to uncomment only when you want to generate the ellipsoids sets
 
-Pbig = np.load('linP.npy')
-P_3 = np.load('../non_linear_integrator_3_layers/P.npy')
+ellip = []
+# Pbig = np.load('linP.npy')
+# P_3 = np.load('../non_linear_integrator_3_layers/P.npy')
 # ellipsmall = []
 # ellipbig = []
 # ellip_3layer = []
-# for i in range(10000000):
-#   x0 = np.random.uniform(-np.pi, np.pi)
-#   v0 = np.random.uniform(-s.max_speed, s.max_speed)
-#   eta0 = np.random.uniform(0, 20)
-#   x0 = np.array([[x0], [v0], [eta0]])
-#   if (x0.T @ P @ x0 <= 1):
+for i in range(10000000):
+  x0 = np.random.uniform(-np.pi, np.pi)
+  v0 = np.random.uniform(-s.max_speed, s.max_speed)
+  eta0 = np.random.uniform(0, 20)
+  x0 = np.array([[x0], [v0], [eta0]])
+  if ((x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1):
+    ellip.append(x0)
+ellip = np.array(ellip)
+np.save('ellip.npy', ellip)
+
 #     ellipsmall.append(x0)
 #   if (x0.T @ Pbig @ x0 <= 1):
 #     ellipbig.append(x0)
@@ -54,12 +59,12 @@ for i in range(n_trials):
     theta0 = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta0 = np.random.uniform(-s.max_speed, s.max_speed)
     x0 = np.array([[theta0], [vtheta0], [0.0]])
-    if ((x0).T @ P @ (x0) <= 1):
+    if ((x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1):
       in_ellip = True
       s.state = x0
 
   print(f"Initial state: theta_0: {theta0*180/np.pi:.2f}, v_0: {vtheta0:.2f}, eta_0: {0:.2f}")
-  print(f"Is initial point inside ROA? {(x0.T @ P @ x0 <= 1)[0][0]}")
+  print(f"Is initial point inside ROA? {((x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1)[0][0]}")
 
   states.append(x0)
 
