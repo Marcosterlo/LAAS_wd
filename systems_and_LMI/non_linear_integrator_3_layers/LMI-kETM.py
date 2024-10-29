@@ -109,59 +109,47 @@ objective = cp.Minimize(cp.trace(P))
 # Problem definition
 prob = cp.Problem(objective, constraints)
 
-# Initialization of parameter alpha to 1, the most conservative case 
-alpha.value = 0.08
-# Initialization of the variables used to perform the bisection
-last_bad = 0
-last_good = alpha.value
-# Initialization of the variable used to compare the goodness of the solutions
-last_P_eig = 1e5
-# Flag variable to chck if the run has terminated due to an error
+# Implementation of golden ratio search to find optimal alpha value
+feasible_extreme = 0.1
+infeasible_extreme = 0.0
+threshold = 1e-4
+golden_ratio = (1 + np.sqrt(5)) / 2
 error = False
 
 try:
-  # Iter many times to perform the bisection trying to maximize the ROA
-  for i in range(20):
-
-    # Problem solution
+  while (feasible_extreme - infeasible_extreme > threshold):
+    x1 = feasible_extreme - (feasible_extreme - infeasible_extreme) / golden_ratio
+    x2 = infeasible_extreme + (feasible_extreme - infeasible_extreme) / golden_ratio
+    alpha.value = x1
     prob.solve(solver=cp.MOSEK, verbose=False)
-
-    # Feasible solution
-    if prob.status not in ["infeasible", "unbounded", "unknown"]:
-      # Maximum eigenvalue of P is smaller the bigger the ROA is
-      P_eig = np.max(np.linalg.eigvals(P.value))
-      # If the solution is worse than the previous one
-      if P_eig > last_P_eig:
-        print(f"Feasible but smaller ROA, alpha: {alpha.value}")
-        last_bad = alpha.value
-        alpha.value = alpha.value + (last_good - last_bad)/8
-      else:
-        print(f"\n ==================== \nMax eigenvalue of P: {P_eig}")
-        print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
-        print(f"Current alpha value: {alpha.value}\n ==================== \n")
-        last_good = alpha.value
-        last_P_eig = P_eig
-        alpha.value = alpha.value - (last_good - last_bad)/8
-        last_P = P.value
-        last_M = M.value
+    if prob.status in ["infeasible", "unbounded", "unknown"]:
+      fx1 = 1e5
     else:
-      print(f"Infeasible or unbounded, alpha: {alpha.value}")
-      last_bad = alpha.value
-      alpha.value = alpha.value + (last_good - last_bad)/8
-
+      fx1 = np.max(np.linalg.eigvals(P.value))
+      print(f"\n==================== \nMax eigenvalue of P: {fx1}")
+      print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+      print(f"Current alpha value: {alpha.value}\n==================== \n")
+    alpha.value = x2
+    prob.solve(solver=cp.MOSEK, verbose=False)
+    if prob.status in ["infeasible", "unbounded", "unknown"]:
+      fx2 = 1e5
+    else:
+      fx2 = np.max(np.linalg.eigvals(P.value))
+      print(f"\n==================== \nMax eigenvalue of P: {fx2}")
+      print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+      print(f"Current alpha value: {alpha.value}\n==================== \n")
+    if fx1 < fx2:
+      feasible_extreme = x2
+    else:
+      infeasible_extreme = x1
 except cp.error.SolverError:
   error = True
-  print("Solver encountered an error, retrieving last feasible solution")
-  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(last_P))}")
-  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(last_M))}")
-  print(f"Final alpha value: {last_good}")
+  print("Solver error")
+  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}")
+  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+  print(f"Final alpha value: {alpha.value}")
 
 if not error:
-  print(f"\nMax n of iterations reached, retrieving last feasible solution")
-  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(last_P))}")
-  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(last_M))}")
-  print(f"Final alpha value: {last_good}")
-  np.save('kP.npy', last_P)
-  np.save('kT.npy', T.value)
-  np.save('kZ.npy', Z.value)
-  np.save('Omega.npy', Omega.value)
+  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}")
+  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+  print(f"Final alpha value: {alpha.value}")
