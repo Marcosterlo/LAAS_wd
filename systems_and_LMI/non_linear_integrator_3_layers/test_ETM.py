@@ -2,8 +2,7 @@ from systems_and_LMI.systems.NonLinearPendulum_NN_ETM import NonLinPendulum_NN_E
 import numpy as np
 import matplotlib.pyplot as plt
 
-ref = 0.0
-s = NonLinPendulum_NN_ETM(ref)
+s = NonLinPendulum_NN_ETM()
 nsteps = 300
 P = np.load('P.npy')
 
@@ -18,6 +17,8 @@ while not in_ellip:
   theta0 = np.random.uniform(-np.pi/2, np.pi/2)
   vtheta0 = np.random.uniform(-s.max_speed, s.max_speed)
   x0 = np.array([[theta0], [vtheta0], [0.0]])
+  ref = np.random.uniform(-0.1, 0.1)
+  s = NonLinPendulum_NN_ETM(ref)
   if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1:
     in_ellip = True
     s.state = x0
