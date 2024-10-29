@@ -8,6 +8,7 @@ s = NonLinPendulum_NN_kETM(ref)
 s1 = NonLinPendulum_NN_ETM(ref)
 nsteps = 300
 P = np.load('P.npy')
+kP = np.load('kP.npy')
 
 states = []
 inputs = []
@@ -26,11 +27,10 @@ while not in_ellip:
   theta0 = np.random.uniform(-np.pi/2, np.pi/2)
   vtheta0 = np.random.uniform(-s.max_speed, s.max_speed)
   ref = np.random.uniform(-0.1, 0.1)
-  ref = 0.0
   s = NonLinPendulum_NN_kETM(ref)
   s1 = NonLinPendulum_NN_ETM(ref)
   x0 = np.array([[theta0], [vtheta0], [0.0]])
-  if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1 and (x0 - s1.xstar).T @ P @ (x0 - s1.xstar) <= 1:
+  if (x0 - s.xstar).T @ kP @ (x0 - s.xstar) <= 1 and (x0 - s1.xstar).T @ P @ (x0 - s1.xstar) <= 1:
     in_ellip = True
     s.state = x0
     s1.state = x0
@@ -43,7 +43,7 @@ for i in range(nsteps):
   states.append(state)
   inputs.append(u)
   events.append(e)
-  lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
+  lyap.append((state - s.xstar).T @ kP @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
 
   etas.append(eta)
   states1.append(state1)

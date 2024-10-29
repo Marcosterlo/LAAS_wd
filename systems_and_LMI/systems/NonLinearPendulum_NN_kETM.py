@@ -10,16 +10,23 @@ class NonLinPendulum_NN_kETM(NonLinPendulum_NN_ETM):
   def __init__(self, reference=0.0):
     super().__init__(reference)
 
-    Omega_name = os.path.abspath(__file__ + '/../nonlin_dynamic_ETM/Omega.npy')
+    Z_name = os.path.abspath(__file__ + '/../nonlin_dynamic_kETM/kZ.npy')
+    T_name = os.path.abspath(__file__ + '/../nonlin_dynamic_kETM/kT.npy')
+    Omega_name = os.path.abspath(__file__ + '/../nonlin_dynamic_kETM/Omega.npy')
+    T = np.load(T_name)
+    Z = np.load(Z_name)
     Omega = np.load(Omega_name)
+    G = np.linalg.inv(T) @ Z
+    self.G = np.split(G, self.nlayers - 1)
     Ck = np.zeros((self.nphi, self.nx))
-    Ck[:, 0] = 1e5
-
+    Ck[:, 0] = 1.0
+    self.T = []
     self.Omega = []
     self.Ck = []
     for i in range(self.nlayers - 1):
       self.Omega.append(Omega[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
       self.Ck.append(Ck[i*self.neurons[i]:(i+1)*self.neurons[i], :])
+      self.T.append(T[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
   
   def forward(self):
     func = nn.Hardtanh()

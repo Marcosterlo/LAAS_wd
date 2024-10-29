@@ -110,7 +110,7 @@ objective = cp.Minimize(cp.trace(P))
 prob = cp.Problem(objective, constraints)
 
 # Initialization of parameter alpha to 1, the most conservative case 
-alpha.value = 1
+alpha.value = 0.08
 # Initialization of the variables used to perform the bisection
 last_bad = 0
 last_good = alpha.value
@@ -121,7 +121,7 @@ error = False
 
 try:
   # Iter many times to perform the bisection trying to maximize the ROA
-  for i in range(100):
+  for i in range(20):
 
     # Problem solution
     prob.solve(solver=cp.MOSEK, verbose=False)
@@ -161,3 +161,7 @@ if not error:
   print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(last_P))}")
   print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(last_M))}")
   print(f"Final alpha value: {last_good}")
+  np.save('kP.npy', last_P)
+  np.save('kT.npy', T.value)
+  np.save('kZ.npy', Z.value)
+  np.save('Omega.npy', Omega.value)
