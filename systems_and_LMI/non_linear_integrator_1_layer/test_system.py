@@ -14,7 +14,7 @@ ellip = []
 # ellipsmall = []
 # ellipbig = []
 # ellip_3layer = []
-for i in range(10000000):
+for i in range(100000):
   x0 = np.random.uniform(-np.pi, np.pi)
   v0 = np.random.uniform(-s.max_speed, s.max_speed)
   eta0 = np.random.uniform(0, 20)
@@ -68,10 +68,6 @@ for i in range(n_trials):
 
   states.append(x0)
 
-  def negative_gradient_check(arr):
-    grad = np.gradient(arr)
-    return np.all(grad <= 0)
-
   # Run the system
   for i in range(nsteps):
     u = s.K @ s.state 
@@ -91,8 +87,6 @@ for i in range(n_trials):
   states = np.array(states)
   inputs = np.array(inputs)
   lyap = np.squeeze(np.array(lyap))
-
-  print(f"Is Lyapunov strictly decresing? {negative_gradient_check(lyap)}")
 
   # Plot non linear ellipsoid along with state trajectory
   plt.plot(ellip[:, 0], ellip[:, 1], 'o')
