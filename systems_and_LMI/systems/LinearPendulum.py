@@ -10,7 +10,6 @@ class LinPendulum():
     self.dt = 0.02
     self.max_torque = 5
     self.max_speed = 8.0
-    self.constant_reference = 0
     self.nx = 2
     self.nu = 1
 
