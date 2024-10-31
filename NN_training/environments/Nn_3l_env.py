@@ -3,6 +3,7 @@ import os
 import gymnasium as gym
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
+import systems_and_LMI.LMI.no_int_3l.main as lmi
 
 class Nn_3l_env(gym.Env):
   
@@ -44,8 +45,8 @@ class Nn_3l_env(gym.Env):
     self.last_W = self.W
     self.last_b = self.b
 
-    # Maximum number of attempts to find a feasible set of weights and biases before ending the episode
-    max_attempts = 10
+    # Variable to store the best eigenvalue found, or best ROA
+    self.best_eig = 1e10
 
   # This method gives the size of the action and the observation space being the number of parameters of the neural network
   def get_num_params(self):
@@ -57,17 +58,22 @@ class Nn_3l_env(gym.Env):
     return num_params
   
   def step(self, action):
+    
+    # Importation of new weights and biases
     W, b = self.get_weights(action)
 
-    terminated = False
-    
-    n_attempts = 0
-    while n_attempts < self.max_attempts:
-      reward, feasible = self.reward(W, b)
-      if feasible:
-        return self.get_obs(), reward, terminated, terminated, {}
-    
     terminated = True
+
+    # Loop to find a feasible set of weights and biases
+    reward, best, feasible = self.reward(W, b)
+
+    if feasible:
+      terminated = False
+      
+    if best:
+      self.last_W = W
+      self.last_b = b
+    
     return self.get_obs(), reward, terminated, terminated, {}
   
   # The function get_weigth will return the new weights and biases after the increment action is applied
@@ -77,13 +83,13 @@ class Nn_3l_env(gym.Env):
     new_b = []
     for weight in self.W:
       weight_size = weight.size
-      weight += increment_action[offset:offset + weight_size].reshape(weight.shape)
+      weight += 1e-3 * increment_action[offset:offset + weight_size].reshape(weight.shape)
       offset += weight_size
       new_W.append(weight)
     
     for bias in self.b:
       bias_size = bias.size
-      bias += increment_action[offset:offset + bias_size].reshape(bias.shape)
+      bias += 1e-3 * increment_action[offset:offset + bias_size].reshape(bias.shape)
       offset += bias_size
       new_b.append(bias)
 
@@ -91,11 +97,24 @@ class Nn_3l_env(gym.Env):
 
   # Function that handles the reward function. It will execute the LMI and compute the reward accordingly
   def reward(self, W, b):
-    return 1.0, True
+    lmi_obj = lmi.LMI_3l_no_int(W, b)
+    # alpha = lmi_obj.search_alpha(0.1, 0, 1e-2, verbose=True)
+    P, _, _ = lmi_obj.solve(0.02)
+    if P is None:
+      return (-1.0), False, False
+    else:
+      val = np.max(np.linalg.eigvals(P))
+      if val < self.best_eig:
+        self.best_eig = val
+        print(f"Found better values: current best eig: {self.best_eig}")
+        return float(10.0), True, True
+      else:
+        reward = self.best_eig / val
+        reward = 1.0
+        return float(reward), False, True
   
   # The reset method puts the last best feasible set of weight and biases
   def reset(self, seed=None):
-    self.time = 0
     self.W = self.last_W
     self.b = self.last_b
     return (self.get_obs(), {})
@@ -112,5 +131,4 @@ class Nn_3l_env(gym.Env):
 # Main execution to check if the environment is correctly defined following the OpenAI Gym standards API
 if __name__ == "__main__":
   env = Nn_3l_env()
-  obs = env.get_obs()
   check_env(env, warn=True)

@@ -3,17 +3,14 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from stable_baselines3 import PPO
-from NN_training.environments import PendulumEnv
+from NN_training.environments.Nn_3l_env import Nn_3l_env
 
-model = NeuralNet()
-model.load_state_dict(torch.load('model.pth'))
-model.eval()
+env = Nn_3l_env()
 
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+policy_kwargs = dict(
+    net_arch=[32, 32, 32],
+    activation_fn=nn.Tanh
+)
+model_rl = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, n_steps=4, verbose=1)
 
-if __name__ == "__main__":
-  env = PendulumEnv(model)
-  model_rl = PPO("MlpPolicy", env, verbose=1)
-  model_rl.learn(total_timesteps=10000)
-  torch.save(model.state_dict(), 'model_rl.pth')
+model_rl.learn(total_timesteps=10000)

@@ -105,10 +105,13 @@ class LMI_3l_no_int():
   
   def solve(self, alpha_val, verbose=False):
     self.alpha.value = alpha_val
-    self.prob.solve(solver=cp.MOSEK, verbose=False)
+    try:
+      self.prob.solve(solver=cp.MOSEK, verbose=False)
+    except cp.error.SolverError:
+      return None, None, None
 
     if self.prob.status not in ["optimal", "optimal_inaccurate"]:
-      return None
+      return None, None, None
     else:
       if verbose:
         print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
@@ -118,7 +121,7 @@ class LMI_3l_no_int():
   def search_alpha(self, feasible_extreme, infeasible_extreme, threshold, verbose=False):
     golden_ratio = (1 + np.sqrt(5)) / 2
     i = 0
-    while (feasible_extreme - infeasible_extreme > threshold):
+    while (feasible_extreme - infeasible_extreme > threshold) and i < 11:
       i += 1
       alpha1 = feasible_extreme - (feasible_extreme - infeasible_extreme) / golden_ratio
       alpha2 = infeasible_extreme + (feasible_extreme - infeasible_extreme) / golden_ratio
