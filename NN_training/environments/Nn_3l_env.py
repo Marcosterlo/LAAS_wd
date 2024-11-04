@@ -9,7 +9,7 @@ class Nn_3l_env(gym.Env):
   
   def __init__(self):
     super(Nn_3l_env, self).__init__()
-
+    
     W1_name = os.path.abspath(__file__ + "/../../../systems_and_LMI/systems/simple_weights/l1.weight.csv")
     W2_name = os.path.abspath(__file__ + "/../../../systems_and_LMI/systems/simple_weights/l2.weight.csv")
     W3_name = os.path.abspath(__file__ + "/../../../systems_and_LMI/systems/simple_weights/l3.weight.csv")
@@ -34,7 +34,7 @@ class Nn_3l_env(gym.Env):
     b4 = np.loadtxt(b4_name, delimiter=',')
 
     self.b = [b1, b2, b3, b4]
-    
+      
     # Normalized action space definition
     self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(self.get_num_params(),), dtype=np.float32)
     
@@ -46,7 +46,19 @@ class Nn_3l_env(gym.Env):
     self.last_b = self.b
 
     # Variable to store the best eigenvalue found, or best ROA
-    self.best_eig = 1e10
+    self.best_ROA = 1e-10
+
+    # Variable to store length of the episode
+    self.episode_length = 10
+
+    # Variable to store current episode step
+    self.current_step = 0
+
+    # Flag variable to update current weights and biases
+    self.update_request = False
+
+    print(f'Setup values')
+    self.reward(self.W, self.b)
 
   # This method gives the size of the action and the observation space being the number of parameters of the neural network
   def get_num_params(self):
@@ -62,17 +74,14 @@ class Nn_3l_env(gym.Env):
     # Importation of new weights and biases
     W, b = self.get_weights(action)
 
-    terminated = True
+    terminated = False
 
-    # Loop to find a feasible set of weights and biases
-    reward, best, feasible = self.reward(W, b)
+    reward = self.reward(W, b)
 
-    if feasible:
-      terminated = False
-      
-    if best:
-      self.last_W = W
-      self.last_b = b
+    if self.current_step >= self.episode_length - 1:
+      terminated = True
+
+    self.current_step += 1
     
     return self.get_obs(), reward, terminated, terminated, {}
   
@@ -98,25 +107,30 @@ class Nn_3l_env(gym.Env):
   # Function that handles the reward function. It will execute the LMI and compute the reward accordingly
   def reward(self, W, b):
     lmi_obj = lmi.LMI_3l_no_int(W, b)
-    # alpha = lmi_obj.search_alpha(0.1, 0, 1e-2, verbose=True)
+    #alpha = lmi_obj.search_alpha(0.1, 0, 1e-2, verbose=True)
     P, _, _ = lmi_obj.solve(0.02)
     if P is None:
-      return (-1.0), False, False
+      return float(0.0)
     else:
-      val = np.max(np.linalg.eigvals(P))
-      if val < self.best_eig:
-        self.best_eig = val
-        print(f"Found better values: current best eig: {self.best_eig}")
-        return float(10.0), True, True
-      else:
-        reward = self.best_eig / val
-        reward = 1.0
-        return float(reward), False, True
+      area = np.pi / np.sqrt(np.linalg.det(P))
+      if area > self.best_ROA:
+        self.best_ROA = area
+        print(f"Found better ROA: current area: {self.best_ROA:.2f}, current max P eigenvalue: {np.max(np.linalg.eigvals(P)):.2f}")
+        self.last_W = W
+        self.last_b = b
+        self.update_request = True
+        print("Updating weights and biases")
+
+      reward = float(np.log(1 + area))
+      return float(reward)
   
   # The reset method puts the last best feasible set of weight and biases
   def reset(self, seed=None):
-    self.W = self.last_W
-    self.b = self.last_b
+    self.current_step = 0
+    if self.update_request:
+      self.update_request = False
+      self.W = self.last_W
+      self.b = self.last_b
     return (self.get_obs(), {})
   
   # Function to extract the observation being the ordered list of element of all the weights and biases
