@@ -45,6 +45,8 @@ for _ in range(size_dataset):
   vtheta = np.clip(np.random.normal(vtheta_mean, vtheta_std), -s.max_speed, s.max_speed)
   state = np.array([[theta], [vtheta]])
   u = -K @ state
+  u = np.clip(u, -s.max_torque, s.max_torque)/s.max_torque
+  print(u)
   data = np.concatenate([state, u], axis=0)
   dataset.append(data)
 

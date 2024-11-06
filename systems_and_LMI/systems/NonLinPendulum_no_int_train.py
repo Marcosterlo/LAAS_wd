@@ -33,14 +33,14 @@ class NonLinPendulum_no_int_train(LinPendulum):
       layer.bias = nn.Parameter(torch.tensor(self.b[i]))
       self.layers.append(layer)
     
-    self.nphi = self.W[0].shape[0] + self.W[1].shape[0] + self.W[2].shape[0]
+    self.nphi = self.W[0].shape[0] + self.W[1].shape[0] + self.W[2].shape[0] + 1
     N = block_diag(*self.W)
     Nux = np.zeros((self.nu, self.nx))
-    Nuw = N[-self.nu:, self.nx:]
-    Nub = self.b[-1].reshape(self.nu, self.nu)
-    Nvx = N[:-self.nu, :self.nx]
-    Nvw = N[:-self.nu, self.nx:]
-    Nvb = np.concatenate([self.b[0], self.b[1], self.b[2]], axis=0).reshape(self.nphi, self.nu)
+    Nuw = np.concatenate([np.zeros((self.nu, self.nphi - 1)), np.array([[self.max_torque]])], axis=1)
+    Nub = np.array([[0.0]])
+    Nvx = N[:, :self.nx]
+    Nvw = np.concatenate([N[:, self.nx:], np.zeros((self.nphi, self.nu))], axis=1)
+    Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], np.array([self.b[3]])], axis=0).reshape(self.nphi, self.nu)
 
     self.N = [Nux, Nuw, Nub, Nvx, Nvw, Nvb]
 
@@ -63,7 +63,8 @@ class NonLinPendulum_no_int_train(LinPendulum):
     wstar1 = wstar[:self.neurons[0]]
     wstar2 = wstar[self.neurons[0]:self.neurons[0] + self.neurons[1]]
     wstar3 = wstar[self.neurons[0] + self.neurons[1]:]
-    self.wstar = [wstar1, wstar2, wstar3]  
+    wstar4 = wstar[-1]
+    self.wstar = [wstar1, wstar2, wstar3, wstar4]  
   
   def forward(self):
     func = nn.Hardtanh()
@@ -76,7 +77,7 @@ class NonLinPendulum_no_int_train(LinPendulum):
     return nu
   
   def step(self):
-    u = self.forward()
+    u = np.clip(self.forward(), -1.0, 1.0)*self.max_torque
     nonlin = np.sin(self.state[0]) - self.state[0]
     self.state = self.A @ self.state + self.B @ u + self.C * nonlin
     return self.state, u

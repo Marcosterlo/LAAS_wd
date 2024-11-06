@@ -13,8 +13,8 @@ class LMI_3l_no_int():
     self.C = self.system.C
     self.nx = self.system.nx
     self.nq = self.system.nq
-    self.vbar = self.system.max_torque
     self.bound = 1
+    self.max_torque = self.system.max_torque
     self.xstar = self.system.xstar 
     self.wstar = self.system.wstar
     self.R = self.system.R
@@ -45,7 +45,8 @@ class LMI_3l_no_int():
     Z1 = cp.Variable((self.neurons[0], self.nx))
     Z2 = cp.Variable((self.neurons[1], self.nx))
     Z3 = cp.Variable((self.neurons[2], self.nx))
-    self.Z = cp.vstack([Z1, Z2, Z3])
+    Z4 = cp.Variable((1, self.nx))
+    self.Z = cp.vstack([Z1, Z2, Z3, Z4])
     
     # Parameters definition
     self.alpha = cp.Parameter()
@@ -85,7 +86,7 @@ class LMI_3l_no_int():
     self.constraints += [self.T >> 0]
     self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
     
-    # Ellipsoid conditions
+    # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
       for k in range(self.neurons[i]):
         Z_el = self.Z[i*self.neurons[i] + k]
@@ -96,6 +97,17 @@ class LMI_3l_no_int():
             [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
         ])
         self.constraints += [ellip >> 0]
+    
+    # Ellipsoid conditions for last saturation
+    Z_el = self.Z[-1]
+    T_el = self.T[-1, -1]
+    vcap = np.min([np.abs(-self.bound - self.wstar[-1]), np.abs(self.bound - self.wstar[-1])], axis=0)
+    ellip = cp.bmat([
+        [self.P, cp.reshape(Z_el, (self.nx ,1))],
+        [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
+    ])
+    self.constraints += [ellip >> 0]
+    
     
     # Objective function definition
     self.objective = cp.Minimize(cp.trace(self.P))
@@ -190,6 +202,6 @@ if __name__ == "__main__":
   b = [b1, b2, b3, b4] 
 
   lmi = LMI_3l_no_int(W, b)
-  alpha = lmi.search_alpha(1, 0, 1e-3, verbose=True)
+  alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
   lmi.solve(alpha, verbose=True)
   lmi.save_results('Test')

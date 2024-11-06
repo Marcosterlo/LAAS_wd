@@ -97,7 +97,7 @@ class NonLinPendulum_no_int(LinPendulum):
     return nu
   
   def step(self):
-    u = self.forward()
+    u = self.forward()*self.max_torque
     nonlin = np.sin(self.state[0]) - self.state[0]
     self.state = self.A @ self.state + self.B @ u + self.C * nonlin
     return self.state, u
