@@ -31,7 +31,7 @@ class Simple_pendulum_env(gym.Env):
   def step(self, action):
 
     # Theta and theta dot extraction
-    th, thdot = self.state[0]
+    th, thdot = self.state
     
     # Action clipping and de-normalization
     action = np.clip(action, -1.0, 1.0) * self.max_torque
@@ -42,11 +42,12 @@ class Simple_pendulum_env(gym.Env):
     # Cost computation
     cost = th**2 + 0.1*thdot**2 + 0.001*(action**2) - 1
 
+    state = np.squeeze(self.state)
     # Dynamics update
-    new_state = self.system.A @ self.state.reshape(2,) + (self.system.B * action).reshape(2,) + (self.system.C * (np.sin(th) - th)).reshape(2,)
+    new_state = self.system.A @ state + (self.system.B * action).reshape(2,) + (self.system.C * (np.sin(th) - th)).reshape(2,)
 
     # State update
-    self.state = np.array([new_state.astype(np.float32)])
+    self.state = np.squeeze(np.array([new_state.astype(np.float32)]))
 
     truncated = False
     terminated = False
@@ -56,7 +57,7 @@ class Simple_pendulum_env(gym.Env):
       truncated = True
 
     # Early termination definition    
-    if self.state not in self.observation_space:
+    if not self.observation_space.contains(self.state):
       terminated = True
 
     # Time update
@@ -66,13 +67,13 @@ class Simple_pendulum_env(gym.Env):
 
   def reset(self, seed=None):
     # Random initial state
-    self.state = np.array([np.random.uniform(low=-self.lim_state, high=self.lim_state)])
+    self.state = np.squeeze(np.array([np.random.uniform(low=-self.lim_state, high=self.lim_state)]).astype(np.float32))
     # Reset time
     self.time = 0
     return (self.get_obs(), {})
   
   def get_obs(self):
-    th, thdot = self.state[0]
+    th, thdot = self.state
     return np.array([[th, thdot]], dtype=np.float32)
   
   def render(self):
