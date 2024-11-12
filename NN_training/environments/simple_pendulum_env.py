@@ -40,16 +40,18 @@ class Simple_pendulum_env(gym.Env):
     th = (th + np.pi) % (2*np.pi) - np.pi
 
     # Cost computation
-    cost = th**2 + 0.1*thdot**2 + 0.001*(action**2) - 1
+    cost = (th**2 + 0.1*thdot**2 + 0.001*(action**2) - 1)[0]
 
     state = np.squeeze(self.state)
-    # Dynamics update
+    # Dynamics update, a lot of reshape calls to avoid warnings and make the state compliant with check_env checks
     new_state = self.system.A @ state + (self.system.B * action).reshape(2,) + (self.system.C * (np.sin(th) - th)).reshape(2,)
 
     # State update
     self.state = np.squeeze(np.array([new_state.astype(np.float32)]))
 
+    # Truncated flag, if the episode ends because of the time limit
     truncated = False
+    # Terminated flag if the epidosde ends because of the state limit
     terminated = False
 
     # End of episode defintion
@@ -70,15 +72,13 @@ class Simple_pendulum_env(gym.Env):
     self.state = np.squeeze(np.array([np.random.uniform(low=-self.lim_state, high=self.lim_state)]).astype(np.float32))
     # Reset time
     self.time = 0
+
+    # Returns a tuple with empty info to comply with the gym interface
     return (self.get_obs(), {})
   
   def get_obs(self):
-    th, thdot = self.state
-    return np.array([[th, thdot]], dtype=np.float32)
-  
-  def render(self):
-    th, thdot = self.get_obs()
-    print(f"Theta: {th:.2f}, Theta dot: {thdot:.2f}")
+    # Returns the system state
+    return self.state
   
 if __name__ == "__main__":
   env = Simple_pendulum_env()

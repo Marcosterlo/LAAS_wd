@@ -19,7 +19,7 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"Using device: {device}")
 
-model = NeuralNet().to(device)
+model = NeuralNet(2).to(device)
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 

@@ -48,7 +48,7 @@ CustomEvalCallback = EvalCallback(env, best_model_save_path='.', log_path='./log
 
 callback = CallbackList([CustomCallback(), CustomEvalCallback])
 
-model_rl.learn(total_timesteps=300000, callback=callback, progress_bar=True)
+model_rl.learn(total_timesteps=30000, callback=callback, progress_bar=True)
 
 best_model = PPO.load('best_model.zip', env=env)
 

@@ -1,9 +1,9 @@
 import torch.nn as nn
 
 class NeuralNet(nn.Module):
-  def __init__(self):
+  def __init__(self, input_size):
     super(NeuralNet, self).__init__()
-    self.l1 = nn.Linear(2, 32)
+    self.l1 = nn.Linear(input_size, 32)
     self.hardtan1 = nn.Hardtanh()
     self.l2 = nn.Linear(32, 32)
     self.hardtan2 = nn.Hardtanh()

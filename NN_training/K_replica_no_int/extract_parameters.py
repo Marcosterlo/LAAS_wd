@@ -2,7 +2,7 @@ from NN_training.models.NeuralNet_simple import NeuralNet
 import torch
 import pandas as pd
 
-model = NeuralNet()
+model = NeuralNet(2)
 model.load_state_dict(torch.load('model.pth'))
 
 weight_and_biases = {}
