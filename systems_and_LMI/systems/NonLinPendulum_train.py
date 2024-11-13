@@ -5,12 +5,18 @@ import torch.nn as nn
 import torch
 from scipy.linalg import block_diag
 from scipy.optimize import fsolve
+import warnings
+
+# User warnings filter
+warnings.filterwarnings("ignore", category=UserWarning, module='torch')
 
 # New class definition that depends on the passed weights and biases
 class NonLinPendulum_train(NonLinPendulum):
   
   def __init__(self, W, b, ref):
     super().__init__(ref)
+    
+    warnings.filterwarnings("ignore", category=UserWarning)
 
     self.nq = 1
     self.nr = 1

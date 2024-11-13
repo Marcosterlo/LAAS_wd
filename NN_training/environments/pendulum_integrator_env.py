@@ -46,8 +46,12 @@ class NonLinPendulum_env(gym.Env):
     # Empty state initialization
     self.state = None
 
-    
+    self.infeasible = False
+
   def step(self, action):
+
+    if self.infeasible:
+      return self.get_obs(), -100.0, True, True, {}
 
     th, thdot, eta = self.state
     
@@ -56,13 +60,19 @@ class NonLinPendulum_env(gym.Env):
     th = self.state[0] 
     th = (th + np.pi) % (2*np.pi) - np.pi
 
-    LMI_cost = False
+    state = np.squeeze(self.state)
+
+    new_state = self.A @ state + (self.B * action).reshape(3,) + (self.C * (np.sin(th) - th)).reshape(3,) + (self.D * self.ref).reshape(3,)
+
+    self.state = np.squeeze(np.array([new_state.astype(np.float32)]))
+
+    LMI_cost = True
 
     if LMI_cost:
       xstar = np.squeeze(self.system.xstar)
       cost = (new_state - xstar).T @ self.P @ (new_state - xstar) - (state - xstar).T @ self.P @ (state - xstar)
     else: 
-      state_cost = (th**2 + 0.1*thdot**2 + + 0.001*(eta**2) + 0.001*(action**2))[0]
+      state_cost = (th**2 + 0.1*thdot**2 +  0.001*(eta**2) + 0.001*(action**2))[0]
       stay_alive_reward = 1.0
       
       initial_state_weight = 1.0 
@@ -75,12 +85,6 @@ class NonLinPendulum_env(gym.Env):
 
       cost = state_cost * state_weight - stay_alive_reward * stay_alive_weight
       cost = state_cost - stay_alive_reward
-
-    state = np.squeeze(self.state)
-
-    new_state = self.A @ state + (self.B * action).reshape(3,) + (self.C * (np.sin(th) - th)).reshape(3,) + (self.D * self.ref).reshape(3,)
-
-    self.state = np.squeeze(np.array([new_state.astype(np.float32)]))
 
     truncated = False
     terminated = False
@@ -97,12 +101,12 @@ class NonLinPendulum_env(gym.Env):
     return self.get_obs(), -float(cost), terminated, truncated, {}
   
   def reset(self, seed=None):
-    th = np.float32(np.random.uniform(low=-self.lim_state[0]*0.5, high=self.lim_state[0]*0.5))
+    th = np.float32(np.random.uniform(low=-self.lim_state[0], high=self.lim_state[0]))
     thdot = np.float32(np.random.uniform(low=-self.lim_state[1], high=self.lim_state[1]))
     eta = np.float32(0.0)
     self.state = np.squeeze(np.array([th, thdot, eta]))
-    # if self.time != 0:
-    #   print(f'Current episode length: {self.time}')
+    if self.time != 0:
+      print(f'Current episode length: {self.time}')
     self.time = 0
     self.ref = np.random.uniform(-self.ref_bound, self.ref_bound)
     self.system = NonLinPendulum(self.ref)

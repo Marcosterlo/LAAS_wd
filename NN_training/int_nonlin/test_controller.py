@@ -2,6 +2,7 @@ from systems_and_LMI.systems.NonLinPendulum_train import NonLinPendulum_train
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from systems_and_LMI.LMI.int_3l.main import LMI_3l_int
 
 W1_name = os.path.abspath(__file__ + '/../new_weights/mlp_extractor.policy_net.0.weight.csv')
 b1_name = os.path.abspath(__file__ + '/../new_weights/mlp_extractor.policy_net.0.bias.csv')
@@ -29,8 +30,12 @@ b = [b1, b2, b3, b4]
 
 s = NonLinPendulum_train(W, b, 0.0)
 
-P_name = os.path.abspath(__file__ + '/../Test/P.npy')
-P = np.load(P_name)
+# lmi = LMI_3l_int(W, b)
+# alpha = lmi.search_alpha(0.2, 0, 1e-5, verbose=True)
+# P, _, _ = lmi.solve(alpha, verbose=True)
+# lmi.save_results('Test')
+P = np.load('Test/P.npy')
+print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
 in_ellip = False
 while not in_ellip:
