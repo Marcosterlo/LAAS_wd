@@ -26,6 +26,10 @@ class NonLinPendulum_env(gym.Env):
     self.B = self.system.B
     self.C = self.system.C
     self.D = self.system.D
+
+    # P matrix for lypaunov function used for cost
+    self.P = np.eye(self.system.nx)
+    self.old_P = np.eye(self.system.nx)*0
     
     # Action space definition
     self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
@@ -36,9 +40,12 @@ class NonLinPendulum_env(gym.Env):
     
     # Time variable
     self.time = 0
+    # End of episode
+    self.episode_end = 200
 
     # Empty state initialization
     self.state = None
+
     
   def step(self, action):
 
@@ -49,7 +56,25 @@ class NonLinPendulum_env(gym.Env):
     th = self.state[0] 
     th = (th + np.pi) % (2*np.pi) - np.pi
 
-    cost = (th**2 + 0.1*thdot**2 + + 0.001*(eta**2) + 0.001*(action**2) - 1)[0]
+    LMI_cost = False
+
+    if LMI_cost:
+      xstar = np.squeeze(self.system.xstar)
+      cost = (new_state - xstar).T @ self.P @ (new_state - xstar) - (state - xstar).T @ self.P @ (state - xstar)
+    else: 
+      state_cost = (th**2 + 0.1*thdot**2 + + 0.001*(eta**2) + 0.001*(action**2))[0]
+      stay_alive_reward = 1.0
+      
+      initial_state_weight = 1.0 
+      final_state_weight = 1.0
+      state_weight = (final_state_weight - initial_state_weight) /self.episode_end * self.time + initial_state_weight
+
+      initial_reward_weight = 1.0
+      final_reward_weight = 1.0
+      stay_alive_weight = (final_reward_weight - initial_reward_weight) /self.episode_end * self.time + initial_reward_weight
+
+      cost = state_cost * state_weight - stay_alive_reward * stay_alive_weight
+      cost = state_cost - stay_alive_reward
 
     state = np.squeeze(self.state)
 
@@ -63,20 +88,24 @@ class NonLinPendulum_env(gym.Env):
     if self.time >= 200 - 1:
       truncated = True
       
-    if not self.observation_space.contains(self.state):
+    state_to_check = (1/self.episode_end * self.time + 1) * self.state
+    if not self.observation_space.contains(state_to_check):
       terminated = True
       
     self.time += 1
-    
+
     return self.get_obs(), -float(cost), terminated, truncated, {}
   
   def reset(self, seed=None):
-    th = np.float32(np.random.uniform(low=-self.lim_state[0], high=self.lim_state[0]))
+    th = np.float32(np.random.uniform(low=-self.lim_state[0]*0.5, high=self.lim_state[0]*0.5))
     thdot = np.float32(np.random.uniform(low=-self.lim_state[1], high=self.lim_state[1]))
     eta = np.float32(0.0)
     self.state = np.squeeze(np.array([th, thdot, eta]))
+    # if self.time != 0:
+    #   print(f'Current episode length: {self.time}')
     self.time = 0
     self.ref = np.random.uniform(-self.ref_bound, self.ref_bound)
+    self.system = NonLinPendulum(self.ref)
     return (self.get_obs(), {})
   
   def get_obs(self):

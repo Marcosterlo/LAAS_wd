@@ -2,7 +2,6 @@ from systems_and_LMI.systems.NonLinPendulum_no_int_train import NonLinPendulum_n
 import numpy as np
 import cvxpy as cp
 import os
-from scipy.linalg import block_diag
 
 class LMI_3l_no_int():
   def __init__(self, W, b):

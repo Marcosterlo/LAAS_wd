@@ -25,8 +25,13 @@ class NonLinPendulum_train(NonLinPendulum):
     self.layers = []
     for i in range(self.nlayers):
       layer = nn.Linear(self.W[i].shape[1], self.W[i].shape[0])
-      layer.weight = nn.Parameter(torch.tensor(self.W[i]))
-      layer.bias = nn.Parameter(torch.tensor(self.b[i]))
+      try:
+        layer.weight = nn.Parameter(self.W[i].clone().detach().requires_grad_(True))
+        layer.bias = nn.Parameter(self.b[i].clone().detach().requires_grad_(True))
+      except:
+        layer.weight = nn.Parameter(torch.tensor(self.W[i]))
+        layer.bias = nn.Parameter(torch.tensor(self.b[i]))
+        
       self.layers.append(layer)
     
     self.nphi = self.W[0].shape[0] + self.W[1].shape[0] + self.W[2].shape[0] + 1
@@ -36,7 +41,10 @@ class NonLinPendulum_train(NonLinPendulum):
     Nub = np.array([[0.0]])
     Nvx = N[:, :self.nx]
     Nvw = np.concatenate([N[:, self.nx:], np.zeros((self.nphi, self.nu))], axis=1)
-    Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], np.array([self.b[3]])], axis=0).reshape(self.nphi, self.nu)
+    try:
+      Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], np.array([self.b[3]])], axis=0).reshape(self.nphi, self.nu)
+    except:
+      Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], self.b[3]], axis=0).reshape(self.nphi, self.nu)
     
     self.N = [Nux, Nuw, Nub, Nvx, Nvw, Nvb]
     
@@ -50,10 +58,10 @@ class NonLinPendulum_train(NonLinPendulum):
     def implicit_function(x):
       x0 = x[0]
       I = np.eye(self.A.shape[0])
-      rhs = np.squeeze(np.linalg.inv(I - self.A - self.B @ self.Rw) @ (self.B @ self.Rb + self.C * (np.sin(x0) - x0)) + self.D * self.constant_reference)
+      rhs = np.squeeze(np.linalg.inv(I - self.A - self.B @ self.Rw) @ (self.B @ self.Rb + self.C * (np.sin(x0) - x0) + self.D * self.constant_reference))
       return x - rhs
-    
-    self.xstar = fsolve(implicit_function, np.array([0.0, 0.0, 0.0])).reshape((self.nx, 1))
+     
+    self.xstar = fsolve(implicit_function, np.array([[0.0], [0.0], [0.0]])).reshape(3,1)
 
     wstar = R @ Nvx @ self.xstar + R @ Nvb
     wstar1 = wstar[:self.neurons[0]]
@@ -105,31 +113,35 @@ if __name__ == "__main__":
   
   b = [b1, b2, b3, b4]
   
-  s = NonLinPendulum_train(W, b, 0.3)
+  s = NonLinPendulum_train(W, b, -0.3)
 
-  # x0 = np.array([[np.pi/2], [3.0], [0.0]])
+  x0 = np.array([[np.pi/2], [3.0], [0.0]])
 
-  # s.state = x0
+  s.state = x0
   
-  # n_steps = 1000
+  n_steps = 1000
 
-  # states = []
-  # inputs = []
+  states = []
+  inputs = []
   
-  # for i in range(n_steps):
-  #   state, u = s.step()
-  #   states.append(state)
-  #   inputs.append(u)
+  for i in range(n_steps):
+    state, u = s.step()
+    states.append(state - s.xstar)
+    inputs.append(u)
     
-  # states = np.squeeze(np.array(states))
-  # inputs = np.squeeze(np.array(inputs))
+  states = np.squeeze(np.array(states))
+  inputs = np.squeeze(np.array(inputs))
   
-  # import matplotlib.pyplot as plt
+  import matplotlib.pyplot as plt
   
-  # plt.plot(states[:,0], states[:,1])
-  # plt.grid(True)
-  # plt.show()
+  plt.plot(states[:,0], states[:,1])
+  plt.grid(True)
+  plt.show()
+
+  plt.plot(states[:, 2])
+  plt.grid(True)
+  plt.show()
   
-  # plt.plot(inputs)
-  # plt.grid(True)
-  # plt.show()
+  plt.plot(inputs)
+  plt.grid(True)
+  plt.show()
