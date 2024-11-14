@@ -32,11 +32,12 @@ s = NonLinPendulum_kETM_train(W, b, 0.0)
 
 P = np.load('ETM/P.npy')
 
+ref_bound = 10 * np.pi / 180
 in_ellip = False
 while not in_ellip:
   theta = np.random.uniform(-np.pi/2, np.pi/2)
   vtheta = np.random.uniform(-s.max_speed, s.max_speed)
-  ref = np.random.uniform(-0.5, 0.5)
+  ref = np.random.uniform(-ref_bound, ref_bound)
   s = NonLinPendulum_kETM_train(W, b, ref)
   x0 = np.array([[theta], [vtheta], [0.0]])
   if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1:
