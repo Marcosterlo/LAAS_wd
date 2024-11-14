@@ -30,11 +30,14 @@ b = [b1, b2, b3, b4]
 
 s = NonLinPendulum_train(W, b, 0.0)
 
-# lmi = LMI_3l_int(W, b)
-# alpha = lmi.search_alpha(0.2, 0, 1e-5, verbose=True)
-# P, _, _ = lmi.solve(alpha, verbose=True)
-# lmi.save_results('Test')
-P = np.load('Test/P.npy')
+new_weights = False
+if new_weights:
+  lmi = LMI_3l_int(W, b)
+  alpha = lmi.search_alpha(0.2, 0, 1e-5, verbose=True)
+  P, _, _ = lmi.solve(alpha, verbose=True)
+  lmi.save_results('Test')
+else:
+  P = np.load('Test/P.npy')
 print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
 in_ellip = False
@@ -46,7 +49,7 @@ while not in_ellip:
     x0 = np.array([[theta], [vtheta], [0.0]])
     if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1:
         in_ellip = True
-        print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref:.2f}")
+        print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
         s.state = x0
     
 states = []

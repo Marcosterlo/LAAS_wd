@@ -39,8 +39,6 @@ Bbar = -B @ Nuw @ R
 # Variables definition
 P = cp.Variable((nx, nx), symmetric=True)
 
-rho = cp.Variable((1, 1))
-
 T_val = cp.Variable(nphi)
 T = cp.diag(T_val)
 

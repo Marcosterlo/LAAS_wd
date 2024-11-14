@@ -46,12 +46,21 @@ class NonLinPendulum_env(gym.Env):
     # Empty state initialization
     self.state = None
 
-    self.infeasible = False
+    self.ROA_reward = 0.0
+
+  # Setter methods
+  def set_P(self, P, old_P):
+    self.P = P
+    self.old_P = old_P
+  
+  def set_ROA_reward(self, ROA_reward):
+    self.ROA_reward = ROA_reward
+  
+  # Getter methods
+  def get_P(self):
+    return self.P
 
   def step(self, action):
-
-    if self.infeasible:
-      return self.get_obs(), -100.0, True, True, {}
 
     th, thdot, eta = self.state
     
@@ -98,15 +107,16 @@ class NonLinPendulum_env(gym.Env):
       
     self.time += 1
 
-    return self.get_obs(), -float(cost), terminated, truncated, {}
+    return self.get_obs(), -float(cost) + self.ROA_reward, terminated, truncated, {}
   
   def reset(self, seed=None):
     th = np.float32(np.random.uniform(low=-self.lim_state[0], high=self.lim_state[0]))
     thdot = np.float32(np.random.uniform(low=-self.lim_state[1], high=self.lim_state[1]))
     eta = np.float32(0.0)
     self.state = np.squeeze(np.array([th, thdot, eta]))
-    if self.time != 0:
-      print(f'Current episode length: {self.time}')
+    # if self.time != 0:
+      # print(f'Current episode length: {self.time}')
+      # print(f"Diff in P: {np.linalg.norm(self.P - self.old_P)}")
     self.time = 0
     self.ref = np.random.uniform(-self.ref_bound, self.ref_bound)
     self.system = NonLinPendulum(self.ref)

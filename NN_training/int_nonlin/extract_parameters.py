@@ -3,7 +3,7 @@ import torch
 from stable_baselines3 import PPO
 import pandas as pd
 
-model = PPO.load('best_rollout_model.zip')
+model = PPO.load('best_so_far.zip')
 
 weight_and_biases = {}
 
