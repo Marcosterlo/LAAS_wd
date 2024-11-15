@@ -17,15 +17,15 @@ def ellipsoid_plot_2D(P, plot=True, ax=None, color=None, legend=None):
   
   ellipsoid_points = np.stack((x, y), axis=-1) @ eigvecs.T
   
-  x_ellipsoid = ellipsoid_points[:, 0]
+  x_ellipsoid = ellipsoid_points[:, 0] * 180 / np.pi
   y_ellipsoid = ellipsoid_points[:, 1]
   
   if ax is None:
     fig, ax = plt.subplots(figsize=(10, 10))
     if legend:
-      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4, label=legend)
+      ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4, label=legend)
     else:
-      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4)
+      ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4)
 
     ax.set_xlabel('Theta (deg)')
     ax.set_ylabel('V (rad/s)')
@@ -37,9 +37,9 @@ def ellipsoid_plot_2D(P, plot=True, ax=None, color=None, legend=None):
       return fig, ax
   else:
     if legend:
-      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4, label=legend)
+      ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4, label=legend)
     else:
-      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4)
+      ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4)
     return ax
   
 if __name__ == '__main__':

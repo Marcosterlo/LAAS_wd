@@ -42,13 +42,13 @@ in_ellip = False
 while not in_ellip:
   theta = np.random.uniform(-np.pi/2, np.pi/2)
   vtheta = np.random.uniform(-s.max_speed, s.max_speed)
-  ref = np.random.uniform(-ref_bound, ref_bound)
-  s = NonLinPendulum_kETM_train(W, b, ref)
   x0 = np.array([[theta], [vtheta], [0.0]])
-  if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1:
-      in_ellip = True
-      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
-      s.state = x0
+  if (x0).T @ P @ (x0) <= 1.0:
+    in_ellip = True
+    ref = np.random.uniform(-ref_bound, ref_bound)
+    print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+    s = NonLinPendulum_kETM_train(W, b, ref)
+    s.state = x0
   
 nsteps = 300
 
@@ -66,10 +66,16 @@ for i in range(nsteps):
   etas.append(eta)
   lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
 
+states = np.insert(states, 0, x0, axis=0)
+states = np.delete(states, -1, axis=0)
 states = np.squeeze(np.array(states))
-states[:, 0] = states[:, 0] * 180 / np.pi
-s.xstar[0] = s.xstar[0] * 180 / np.pi
+states[:, 0] *= 180 / np.pi
+s.xstar[0] *= 180 / np.pi
+
+inputs = np.insert(inputs, 0, np.array(0.0), axis=0)
+inputs = np.delete(inputs, -1, axis=0)
 inputs = np.squeeze(np.array(inputs))
+
 events = np.squeeze(np.array(events))
 etas = np.squeeze(np.array(etas))
 lyap = np.squeeze(np.array(lyap))
