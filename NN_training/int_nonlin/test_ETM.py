@@ -33,6 +33,9 @@ b = [b1, b2, b3, b4]
 s = NonLinPendulum_kETM_train(W, b, 0.0)
 
 P = np.load('ETM/P.npy')
+print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
+P_static = np.load('Test/P.npy')
+print(f"Size of ROA with static ETM: {np.pi/np.sqrt(np.linalg.det(P_static)):.2f}")
 
 ref_bound = 10 * np.pi / 180
 in_ellip = False
@@ -134,12 +137,16 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-fig, ax = ellipsoid_plot_3D(P, False)
+fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
 ax.plot(states[:, 0], states[:, 1], states[:, 2], 'b')
 ax.plot(s.xstar[0], s.xstar[1], s.xstar[2], marker='o', markersize=5, color='r')
+ax = ellipsoid_plot_3D(P_static, False, ax, color='r', legend='ROA with static ETM')
+plt.legend()
 plt.show()
 
-fig, ax = ellipsoid_plot_2D(P[:2, :2], False)
+fig, ax = ellipsoid_plot_2D(P[:2, :2], False, color='b', legend='ROA with dynamic ETM')
 ax.plot(states[:, 0], states[:, 1], 'b')
 ax.plot(s.xstar[0], s.xstar[1], marker='o', markersize=5, color='r')
+ax = ellipsoid_plot_2D(P_static[:2, :2], False, ax, color='r', legend='ROA with static ETM')
+plt.legend()
 plt.show()

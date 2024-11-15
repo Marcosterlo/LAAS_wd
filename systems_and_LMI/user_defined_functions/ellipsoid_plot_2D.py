@@ -1,7 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def ellipsoid_plot_2D(P, plot=True):
+def ellipsoid_plot_2D(P, plot=True, ax=None, color=None, legend=None):
+
+  if color is None:
+    color = 'r'
+    
   eigvals, eigvecs = np.linalg.eigh(P)
   axis_length = 1 / np.sqrt(eigvals)
   
@@ -16,17 +20,27 @@ def ellipsoid_plot_2D(P, plot=True):
   x_ellipsoid = ellipsoid_points[:, 0]
   y_ellipsoid = ellipsoid_points[:, 1]
   
-  fig, ax = plt.subplots(figsize=(10, 10))
-  ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color='r', alpha=0.4)
+  if ax is None:
+    fig, ax = plt.subplots(figsize=(10, 10))
+    if legend:
+      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4, label=legend)
+    else:
+      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4)
 
-  ax.set_xlabel('Theta (deg)')
-  ax.set_ylabel('V (rad/s)')
-  ax.grid(True)
-  
-  if plot:
-    plt.show()
+    ax.set_xlabel('Theta (deg)')
+    ax.set_ylabel('V (rad/s)')
+    ax.grid(True)
+
+    if plot:
+      plt.show()
+    else:
+      return fig, ax
   else:
-    return fig, ax
+    if legend:
+      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4, label=legend)
+    else:
+      ax.plot(x_ellipsoid*180/np.pi, y_ellipsoid, color=color, alpha=0.4)
+    return ax
   
 if __name__ == '__main__':
 

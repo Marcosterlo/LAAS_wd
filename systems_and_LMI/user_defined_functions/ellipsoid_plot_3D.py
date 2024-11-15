@@ -1,7 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def ellipsoid_plot_3D(P, plot=True):
+def ellipsoid_plot_3D(P, plot=True, ax=None, color=None, legend=None):
+
+  if color is None:
+    color = 'r'
+
   eigvals, eigvecs = np.linalg.eigh(P)
   axis_length = 1 / np.sqrt(eigvals)
   
@@ -20,20 +24,31 @@ def ellipsoid_plot_3D(P, plot=True):
   y_ellipsoid = ellipsoid_points[:, :, 1]
   z_ellipsoid = ellipsoid_points[:, :, 2]
   
-  fig = plt.figure(figsize=(10, 10))
-  ax = fig.add_subplot(111, projection='3d')
-  ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color='r', alpha=0.4, linewidth=0)
+  if ax is None:
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+    if legend:
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color=color, alpha=0.4, linewidth=0, label=legend)
+    else:
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color=color, alpha=0.4, linewidth=0)
 
-  ax.set_xlabel('Theta (deg)')
-  ax.set_ylabel('V (rad/s)')
-  ax.set_zlabel('Integrator state')
-  ax.set_box_aspect([1, 1, 1])
-  ax.grid(True)
-  
-  if plot:
-    plt.show()
+    ax.set_xlabel('Theta (deg)')
+    ax.set_ylabel('V (rad/s)')
+    ax.set_zlabel('Integrator state')
+    ax.set_box_aspect([1, 1, 1])
+    ax.grid(True)
+
+    if plot:
+      plt.show()
+    else:
+      return fig, ax
   else:
-    return fig, ax
+    if legend:
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color='r', alpha=0.4, linewidth=0, label=legend)
+    else:
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color='r', alpha=0.4, linewidth=0)
+    return ax
+  
   
 if __name__ == '__main__':
 
