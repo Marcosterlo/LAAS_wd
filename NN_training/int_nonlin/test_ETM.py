@@ -2,6 +2,8 @@ from systems_and_LMI.systems.NonLinPendulum_kETM_train import NonLinPendulum_kET
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
+from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
 
 W1_name = os.path.abspath(__file__ + "/../new_weights/mlp_extractor.policy_net.0.weight.csv")
 W2_name = os.path.abspath(__file__ + "/../new_weights/mlp_extractor.policy_net.2.weight.csv")
@@ -62,6 +64,8 @@ for i in range(nsteps):
   lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
 
 states = np.squeeze(np.array(states))
+states[:, 0] = states[:, 0] * 180 / np.pi
+s.xstar[0] = s.xstar[0] * 180 / np.pi
 inputs = np.squeeze(np.array(inputs))
 events = np.squeeze(np.array(events))
 etas = np.squeeze(np.array(etas))
@@ -128,4 +132,14 @@ plt.show()
 plt.plot(timegrid, lyap, label='Lyapunov function')
 plt.legend()
 plt.grid(True)
+plt.show()
+
+fig, ax = ellipsoid_plot_3D(P, False)
+ax.plot(states[:, 0], states[:, 1], states[:, 2], 'b')
+ax.plot(s.xstar[0], s.xstar[1], s.xstar[2], marker='o', markersize=5, color='r')
+plt.show()
+
+fig, ax = ellipsoid_plot_2D(P[:2, :2], False)
+ax.plot(states[:, 0], states[:, 1], 'b')
+ax.plot(s.xstar[0], s.xstar[1], marker='o', markersize=5, color='r')
 plt.show()

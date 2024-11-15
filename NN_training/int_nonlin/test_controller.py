@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from systems_and_LMI.LMI.int_3l.main import LMI_3l_int
+from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
+from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
 
 W1_name = os.path.abspath(__file__ + '/../new_weights/mlp_extractor.policy_net.0.weight.csv')
 b1_name = os.path.abspath(__file__ + '/../new_weights/mlp_extractor.policy_net.0.bias.csv')
@@ -44,10 +46,11 @@ in_ellip = False
 while not in_ellip:
     theta = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
-    ref = np.random.uniform(-0.5, 0.5)
+    ref_bound = 10 * np.pi / 180
+    ref = np.random.uniform(-ref_bound, ref_bound)
     s = NonLinPendulum_train(W, b, ref)
     x0 = np.array([[theta], [vtheta], [0.0]])
-    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1:
+    if (x0).T @ P @ (x0) <= 1:
         in_ellip = True
         print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
         s.state = x0
@@ -69,6 +72,8 @@ for i in range(nsteps):
   lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
   
 states = np.array(states)
+states[:, 0] = states[:, 0] * 180 / np.pi
+s.xstar[0] = s.xstar[0] * 180 / np.pi
 inputs = np.array(inputs)
 lyap = np.array(lyap)
 timegrid = np.arange(0, nsteps+1)
@@ -94,4 +99,15 @@ plt.show()
 
 plt.plot(timegrid, np.squeeze(lyap))
 plt.grid(True)
+plt.show()
+
+fix, ax = ellipsoid_plot_3D(P, False)
+ax.plot(states[:, 0], states[:, 1], states[:, 2], 'b')
+ax.plot(s.xstar[0], s.xstar[1], s.xstar[2], marker='o', markersize=5, color='r')
+plt.show()
+
+P = P[:2, :2]
+fig, ax = ellipsoid_plot_2D(P, False)
+ax.plot(states[:, 0], states[:, 1], 'b')
+ax.plot(s.xstar[0], s.xstar[1], marker='o', markersize=5, color='r')
 plt.show()
