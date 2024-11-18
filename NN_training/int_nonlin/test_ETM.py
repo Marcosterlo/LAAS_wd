@@ -43,14 +43,14 @@ while not in_ellip:
   theta = np.random.uniform(-np.pi/2, np.pi/2)
   vtheta = np.random.uniform(-s.max_speed, s.max_speed)
   x0 = np.array([[theta], [vtheta], [0.0]])
+  ref = np.random.uniform(-ref_bound, ref_bound)
+  s = NonLinPendulum_kETM_train(W, b, ref)
   if (x0).T @ P @ (x0) <= 1.0:
     in_ellip = True
-    ref = np.random.uniform(-ref_bound, ref_bound)
     print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
-    s = NonLinPendulum_kETM_train(W, b, ref)
     s.state = x0
-  
-nsteps = 300
+
+nsteps = 1000
 
 states = []
 inputs = []
@@ -101,14 +101,15 @@ for i, event in enumerate(events):
 fig, axs = plt.subplots(4, 1)
 axs[0].plot(timegrid, inputs, label='Control input')
 axs[0].plot(timegrid, inputs * events[:, 2], marker='o', markerfacecolor='none', linestyle='None')
+axs[0].plot(timegrid, timegrid * 0 + s.wstar[-1] * s.max_torque, 'r--')
 axs[0].set_xlabel('Time steps')
 axs[0].set_ylabel('Values')
 axs[0].legend()
 axs[0].grid(True)
 
 axs[1].plot(timegrid, states[:, 0], label='Position')
-axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
 axs[1].plot(timegrid, states[:, 0] * events[:, 2], marker='o', markerfacecolor='none', linestyle='None')
+axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
 axs[1].set_xlabel('Time steps')
 axs[1].set_ylabel('Values')
 axs[1].legend()

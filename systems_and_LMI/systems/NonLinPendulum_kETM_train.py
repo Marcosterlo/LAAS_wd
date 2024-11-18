@@ -50,18 +50,8 @@ class NonLinPendulum_kETM_train(NonLinPendulum_train):
       T = self.T[l]
       vec2 = (self.G[l] @ (self.state - self.xstar) - (self.last_w[l] - self.wstar[l]))
 
-      test_dz = False
-      if test_dz:
-        if np.linalg.norm(vec1 @ T @ vec2) < 1e-6:
-          lht = 0.0
-        else:
-          lht = (vec1 @ T @ vec2)[0][0]
-        rht = self.rho[l] * self.eta[l]
-        if rht < 1e-6:
-          rht = 0.0
-      else:
-        lht = (vec1 @ T @ vec2)[0][0]
-        rht = self.rho[l] * self.eta[l]
+      lht = (vec1 @ T @ vec2)[0][0]
+      rht = self.rho[l] * self.eta[l]
 
       check = lht > rht
       
@@ -71,22 +61,10 @@ class NonLinPendulum_kETM_train(NonLinPendulum_train):
         e[l] = 1
         vec1 = (nu - omega).T
         vec2 = (self.G[l] @ (self.state - self.xstar) - (omega - self.wstar[l]))
-        if test_dz:
-          if np.linalg.norm(vec1 @ T @ vec2) < 1e-6:
-            val[l] = 0.0
-          else:
-            val[l] = (vec1 @ T @ vec2)[0][0]
-        else:
-          val[l] = (vec1 @ T @ vec2)[0][0]
+        val[l] = (vec1 @ T @ vec2)[0][0]
       
       else:
-        if test_dz:
-          if np.linalg.norm(vec1 @ T @ vec2) < 1e-6:
-            val[l] = 0.0
-          else:
-            val[l] = (vec1 @ T @ vec2)[0][0]
-        else:
-          val[l] = (vec1 @ T @ vec2)[0][0]
+        val[l] = (vec1 @ T @ vec2)[0][0]
         omega = self.last_w[l]
         
     l = self.nlayer - 1
