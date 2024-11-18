@@ -50,10 +50,12 @@ class NonLinPendulum_kETM_train(NonLinPendulum_train):
       T = self.T[l]
       vec2 = (self.G[l] @ (self.state - self.xstar) - (self.last_w[l] - self.wstar[l]))
 
-      lht = (vec1 @ T @ vec2)[0][0]
+      lht = (vec1 @ T @ vec2)[0][0] 
       rht = self.rho[l] * self.eta[l]
 
-      check = lht > rht
+      r = 1e-4
+      # lht += r * (1 - params.lambdas[l])
+      check = lht  > rht
       
       if check:
         omega = func(torch.tensor(nu)).detach().numpy()
