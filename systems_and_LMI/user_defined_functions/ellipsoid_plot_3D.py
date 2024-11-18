@@ -28,9 +28,9 @@ def ellipsoid_plot_3D(P, plot=True, ax=None, color=None, legend=None):
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
     if legend:
-      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color=color, alpha=0.4, linewidth=0, label=legend)
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=3, cstride=4, color=color, alpha=0.4, linewidth=0, label=legend)
     else:
-      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color=color, alpha=0.4, linewidth=0)
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=3, cstride=4, color=color, alpha=0.4, linewidth=0)
 
     ax.set_xlabel('Theta (deg)')
     ax.set_ylabel('V (rad/s)')
@@ -44,9 +44,9 @@ def ellipsoid_plot_3D(P, plot=True, ax=None, color=None, legend=None):
       return fig, ax
   else:
     if legend:
-      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color='r', alpha=0.4, linewidth=0, label=legend)
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=4, cstride=4, color='r', alpha=0.4, linewidth=0, label=legend)
     else:
-      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=2, cstride=2, color='r', alpha=0.4, linewidth=0)
+      ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=4, cstride=4, color='r', alpha=0.4, linewidth=0)
     return ax
   
   
