@@ -52,11 +52,12 @@ class NonLinPendulum_no_int_train(LinPendulum):
     self.Rb = Rb
 
     def implicit_function(x):
-      x0 = x[0]
+      x = x.reshape(2, 1)
       I = np.eye(self.A.shape[0])
-      rhs = np.squeeze(np.linalg.inv(I - self.A - self.B @ self.Rw) @ (self.B @ self.Rb + self.C * (np.sin(x0) - x0)))
-      return x - rhs
-    
+      K = np.array([[1.0, 0.0]])
+      to_zero = np.squeeze((-I + self.A + self.B @ self.Rw - self.C @ K) @ x + self.C * np.sin(K @ x) + self.B @ self.Rb)
+      return to_zero
+
     self.xstar = fsolve(implicit_function, np.array([0.0, 0.0])).reshape((self.nx, 1))
 
     wstar = R @ Nvx @ self.xstar + R @ Nvb
