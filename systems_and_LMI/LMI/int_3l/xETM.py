@@ -223,7 +223,6 @@ if __name__ == "__main__":
 
   W = [W1, W2, W3, W4]
 
-  
   b1 = np.loadtxt(b1_name, delimiter=',')
   b2 = np.loadtxt(b2_name, delimiter=',')
   b3 = np.loadtxt(b3_name, delimiter=',')
