@@ -2,7 +2,6 @@ from systems_and_LMI.LMI.int_3l.main import LMI_3l_int
 import systems_and_LMI.systems.nonlin_exp_ROA_kETM.params as params
 import numpy as np
 import cvxpy as cp
-import os
 import warnings
 
 class LMI_3l_int_ETM(LMI_3l_int):
