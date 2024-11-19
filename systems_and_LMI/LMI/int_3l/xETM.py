@@ -30,19 +30,10 @@ class LMI_3l_int_xETM(LMI_3l_int):
       [np.zeros((self.nbigx3, self.nbigx1)), np.zeros((self.nbigx3, self.nbigx2)), self.bigX3]
     ])
     
-    self.N11 = cp.Variable((self.nx, self.neurons[0]))
-    self.N12 = cp.Variable((self.neurons[0], self.neurons[0]))
-    self.N13 = cp.Variable((self.neurons[0], self.neurons[0]))
-    self.N21 = cp.Variable((self.nx, self.neurons[1]))
-    self.N22 = cp.Variable((self.neurons[1], self.neurons[1]))
-    self.N23 = cp.Variable((self.neurons[1], self.neurons[1]))
-    self.N31 = cp.Variable((self.nx, self.neurons[2]))
-    self.N32 = cp.Variable((self.neurons[2], self.neurons[2]))
-    self.N33 = cp.Variable((self.neurons[2], self.neurons[2]))
-
-    self.N1 = cp.vstack([self.N11, self.N12, self.N13])
-    self.N2 = cp.vstack([self.N21, self.N22, self.N23])
-    self.N3 = cp.vstack([self.N31, self.N32, self.N33])
+    self.N1 = cp.Variable((self.nx, self.nphi-1))
+    self.N2 = cp.Variable((self.nphi-1, self.nphi-1))
+    self.N3 = cp.Variable((self.nphi-1, self.nphi-1))
+    self.N = cp.vstack([self.N1, self.N2, self.N3])
 
     self.Z1 = self.Z[:self.neurons[0]]
     self.Z2 = self.Z[self.neurons[0]:self.neurons[0] + self.neurons[1]]
@@ -63,7 +54,7 @@ class LMI_3l_int_xETM(LMI_3l_int):
         [np.zeros((self.nphi, self.nx)), np.eye(self.nphi), np.zeros((self.nphi, self.nq))],
         [np.zeros((self.nq, self.nx)), np.zeros((self.nq, self.nphi)), np.eye(self.nq)],
     ])
-    
+
     self.M1 = cp.bmat([
       [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nq))],
       [self.Z, -self.T , self.T, np.zeros((self.nphi, self.nq))], 
@@ -98,37 +89,88 @@ class LMI_3l_int_xETM(LMI_3l_int):
       [np.zeros((self.neurons[2], self.nx)), self.T3.T @ self.gamma3.T, np.zeros((self.neurons[2], self.neurons[2]))]
     ])
 
-    self.Rxi = cp.bmat([
-      [np.eye(self.nx), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nq))],
-      [np.zeros((self.nphi, self.nx)), np.eye(self.nphi), np.zeros((self.nphi, self.nq))],
-      [self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, np.zeros((self.nphi, self.nq))],
-      [np.zeros((self.nq, self.nx)), np.zeros((self.nq, self.nphi)), np.eye(self.nq)]
+    self.Omega = cp.bmat([
+      [self.Omega1, np.zeros((self.Omega1.shape[0], self.Omega2.shape[1])), np.zeros((self.Omega1.shape[0], self.Omega3.shape[1]))],
+      [np.zeros((self.Omega2.shape[0], self.Omega1.shape[1])), self.Omega2, np.zeros((self.Omega2.shape[0], self.Omega3.shape[1]))],
+      [np.zeros((self.Omega3.shape[0], self.Omega1.shape[1])), np.zeros((self.Omega3.shape[0], self.Omega2.shape[1])), self.Omega3]
     ])
 
-    # self.bigXbar = cp.bmat([
-    #   [self.bigX, np.zeros((self.nphi-1, 1))],
-    #   [np.zeros((1, self.nphi-1)), np.array([[0.0]])]
-    # ])
+    self.bigXbar = cp.bmat([
+      [self.bigX, np.zeros((self.nbigx1 + self.nbigx2 + self.nbigx3, 3))],
+      [np.zeros((3, self.nbigx1 + self.nbigx2 + self.nbigx3)), np.zeros((3, 3))]
+    ])
 
-    self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
+    idx = np.eye(self.nx)
+    xzero = np.zeros((self.nx, self.neurons[0])) 
+    xzeros = np.zeros((self.nx, 1))
+    xzerox = np.zeros((self.nx, self.nx))
 
-    self.hconstr1 = self.hconstr[:self.neurons[0]]
-    self.hconstr2 = self.hconstr[self.neurons[0]:self.neurons[0] + self.neurons[1]]
-    self.hconstr3 = self.hconstr[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2]]
+    id = np.eye(self.neurons[0])
+    zerox = np.zeros((self.neurons[0], self.nx))
+    zero = np.zeros((self.neurons[0], self.neurons[0]))
+    zeros = np.zeros((self.neurons[0], 1))
+
+    szerox = np.zeros((1, self.nx))
+    szero = np.zeros((1, self.neurons[0]))
+    szeros = np.zeros((1, 1))
+    ids = np.eye(1)
+
+    self.Rxi = cp.bmat([
+      [idx, xzero, xzero, xzero, xzero, xzero, xzero],
+      [zerox, id, zero, zero, zero, zero, zero],
+      [zerox, zero, zero, zero, id, zero, zero],
+      [xzerox, xzero, xzero, xzero, xzero, xzero, xzero],
+      [zerox, zero, id, zero, zero, zero, zero], 
+      [zerox, zero, zero, zero, zero, id, zero], 
+      [xzerox, xzero, xzero, xzero, xzero, xzero, xzero],
+      [zerox, zero, zero, id, zero, zero, zero], 
+      [zerox, zero, zero, zero, zero, zero, id]
+    ])
     
-    # self.newconstr = self.bigX - self.Omega + self.N @ self.hconstr + self.hconstr.T @ self.N.T
+    Rxi1 = cp.bmat([
+      [idx, xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
+      [zerox, id, zero, zero, zeros, zero, zero, zero, zeros],
+      [zerox, zero, zero, zero, zeros, id, zero, zero, zeros],
+      [xzerox, xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
+      [zerox, zero, id, zero, zeros, zero, zero, zero, zeros], 
+      [zerox, zero, zero, zero, zeros, zero, id, zero, zeros], 
+      [xzerox, xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
+      [zerox, zero, zero, id, zeros, zero, zero, zero, zeros], 
+      [zerox, zero, zero, zero, zeros, zero, zero, id, zeros],
+      [szerox, szero, szero, szero, ids, szero, szero, szero, szeros],
+      [szerox, szero, szero, szero, szeros, szero, szero, szero, ids]
+    ])
+
+    self.Rxi1 = cp.bmat([
+      [Rxi1, np.zeros((Rxi1.shape[0], 1))],
+      [np.zeros((1, Rxi1.shape[1])), np.array([[0.0]])]
+    ])
+
+
+    self.Rxi2 = cp.bmat([
+        [np.eye(self.nx), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nq))],
+        [np.zeros((self.nphi, self.nx)), np.eye(self.nphi), np.zeros((self.nphi, self.nq))],
+        [self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, np.zeros((self.nphi, self.nq))],
+        [np.zeros((self.nq, self.nx)), np.zeros((self.nq, self.nphi)), np.eye(self.nq)],
+    ])
+
+    self.Rx = self.Rxi1 @ self.Rxi2
+      
+    self.hconstr = cp.hstack([(self.R @ self.Nvx)[:-1], (np.eye(self.R.shape[0]) - self.R)[:-1, :-1], -np.eye(self.nphi-1)])
+
+    self.newconstr = self.Rxi.T @ (self.bigX - self.Omega) @ self.Rxi + self.N @ self.hconstr + self.hconstr.T @ self.N.T
 
     self.M = cp.bmat([
       [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar, self.Abar.T @ self.P @ self.C],
       [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar, self.Bbar.T @ self.P @ self.C],
       [self.C.T @ self.P @ self.Abar, self.C.T @ self.P @ self.Bbar, self.C.T @ self.P @ self.C]
-    ]) - self.M1 @ self.Rphi - self.Rphi.T @ self.M1.T + self.Rs.T @ self.Sinsec @ self.Rs# + self.Rxi.T @ self.bigXbar @ self.Rxi 
+    ]) - self.M1 @ self.Rphi - self.Rphi.T @ self.M1.T + self.Rs.T @ self.Sinsec @ self.Rs + self.Rx.T @ self.bigXbar @ self.Rx 
 
     # Constraints definition
     self.constraints = [self.P >> 0]
     self.constraints += [self.T >> 0]
     self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
-    # self.constraints += [self.newconstr << 0]
+    self.constraints += [self.newconstr << 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -190,4 +232,4 @@ if __name__ == "__main__":
   b = [b1, b2, b3, b4] 
 
   lmi = LMI_3l_int_xETM(W, b)
-  # lmi.solve(1.0, verbose=True)
+  lmi.solve(1.0, verbose=True)
