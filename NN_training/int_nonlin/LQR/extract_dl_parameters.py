@@ -1,9 +1,9 @@
-from NN_training.models.NeuralNet_simple import NeuralNet
+from NN_training.models.NN2l import NeuralNet
 import torch
 import pandas as pd
 
 model = NeuralNet(3)
-model.load_state_dict(torch.load('model.pth'))
+model.load_state_dict(torch.load('model2l.pth'))
 
 weight_and_biases = {}
 
@@ -15,5 +15,5 @@ for name, param in model.named_parameters():
 
 for name, value in weight_and_biases.items():
   df = pd.DataFrame(value)
-  filename = f'./weights/{name}.csv'
+  filename = f'./weights2l/{name}.csv'
   df.to_csv(filename, index=False, header=False)

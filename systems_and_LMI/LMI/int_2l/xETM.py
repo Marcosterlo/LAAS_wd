@@ -1,11 +1,11 @@
-from systems_and_LMI.LMI.int_3l.main import LMI_3l_int
+from systems_and_LMI.LMI.int_2l.main import LMI_2l_int
 import systems_and_LMI.systems.nonlin_exp_ROA_kETM.params as params
 import numpy as np
 import cvxpy as cp
 import os
 import warnings
 
-class LMI_3l_int_xETM(LMI_3l_int):
+class LMI_2l_int_xETM(LMI_2l_int):
 
   def __init__(self, W, b):
     super().__init__(W, b)
@@ -14,34 +14,27 @@ class LMI_3l_int_xETM(LMI_3l_int):
     self.gamma = cp.diag(gammavec)
     self.gamma1 = self.gamma[:self.neurons[0], :self.neurons[0]]
     self.gamma2 = self.gamma[self.neurons[0]:self.neurons[0] + self.neurons[1], self.neurons[0]:self.neurons[0] + self.neurons[1]]
-    self.gamma3 = self.gamma[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2], self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2]]
 
     # New variables
     self.nbigx1 = self.neurons[0] * 2 + self.nx
     self.bigX1 = cp.Variable((self.nbigx1, self.nbigx1))
     self.nbigx2 = self.neurons[1] * 2 + self.nx
     self.bigX2 = cp.Variable((self.nbigx2, self.nbigx2))
-    self.nbigx3 = self.neurons[2] * 2 + self.nx
-    self.bigX3 = cp.Variable((self.nbigx3, self.nbigx3))
     
     self.bigX = cp.bmat([
-      [self.bigX1, np.zeros((self.nbigx1, self.nbigx2)), np.zeros((self.nbigx1, self.nbigx3))],
-      [np.zeros((self.nbigx2, self.nbigx1)), self.bigX2, np.zeros((self.nbigx2, self.nbigx3))],
-      [np.zeros((self.nbigx3, self.nbigx1)), np.zeros((self.nbigx3, self.nbigx2)), self.bigX3]
+      [self.bigX1, np.zeros((self.nbigx1, self.nbigx2))],
+      [np.zeros((self.nbigx2, self.nbigx1)), self.bigX2],
     ])
     
     self.N1 = cp.Variable((self.nx, self.nphi-1))
     self.N2 = cp.Variable((self.nphi-1, self.nphi-1))
-    self.N3 = cp.Variable((self.nphi-1, self.nphi-1))
-    self.N = cp.vstack([self.N1, self.N2, self.N3])
+    self.N = cp.vstack([self.N1, self.N2])
 
     self.Z1 = self.Z[:self.neurons[0]]
     self.Z2 = self.Z[self.neurons[0]:self.neurons[0] + self.neurons[1]]
-    self.Z3 = self.Z[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2]]
     
     self.T1 = self.T[:self.neurons[0], :self.neurons[0]]
     self.T2 = self.T[self.neurons[0]:self.neurons[0] + self.neurons[1], self.neurons[0]:self.neurons[0] + self.neurons[1]]
-    self.T3 = self.T[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2], self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2]] 
 
     # Parameters definition
     self.alpha = cp.Parameter(nonneg=True)
@@ -83,21 +76,14 @@ class LMI_3l_int_xETM(LMI_3l_int):
       [np.zeros((self.neurons[1], self.nx)), self.T2.T @ self.gamma2.T, np.zeros((self.neurons[1], self.neurons[1]))]
     ])
 
-    self.Omega3 = cp.bmat([
-      [np.zeros((self.nx, self.nx)), self.Z3.T @ self.gamma3.T, np.zeros((self.nx, self.neurons[2]))],
-      [self.gamma3 @ self.Z3, -self.gamma3 @ self.T3 - self.T3.T @ self.gamma3.T, self.gamma3 @ self.T3],
-      [np.zeros((self.neurons[2], self.nx)), self.T3.T @ self.gamma3.T, np.zeros((self.neurons[2], self.neurons[2]))]
-    ])
-
     self.Omega = cp.bmat([
-      [self.Omega1, np.zeros((self.Omega1.shape[0], self.Omega2.shape[1])), np.zeros((self.Omega1.shape[0], self.Omega3.shape[1]))],
-      [np.zeros((self.Omega2.shape[0], self.Omega1.shape[1])), self.Omega2, np.zeros((self.Omega2.shape[0], self.Omega3.shape[1]))],
-      [np.zeros((self.Omega3.shape[0], self.Omega1.shape[1])), np.zeros((self.Omega3.shape[0], self.Omega2.shape[1])), self.Omega3]
+      [self.Omega1, np.zeros((self.Omega1.shape[0], self.Omega2.shape[1]))],
+      [np.zeros((self.Omega2.shape[0], self.Omega1.shape[1])), self.Omega2],
     ])
 
     self.bigXbar = cp.bmat([
-      [self.bigX, np.zeros((self.nbigx1 + self.nbigx2 + self.nbigx3, 3))],
-      [np.zeros((3, self.nbigx1 + self.nbigx2 + self.nbigx3)), np.zeros((3, 3))]
+      [self.bigX, np.zeros((self.nbigx1 + self.nbigx2))],
+      [np.zeros((3, self.nbigx1 + self.nbigx2)), np.zeros((3, 3))]
     ])
 
     idx = np.eye(self.nx)

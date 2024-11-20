@@ -1,13 +1,14 @@
-from systems_and_LMI.systems.NonLinPendulum_train import NonLinPendulum_train
+from systems_and_LMI.systems.NonLinPendulum_train_2l import NonLinPendulum_train2l
 import numpy as np
 import cvxpy as cp
 import os
 import warnings
 
-class LMI_3l_int():
+class LMI_2l_int():
+  
   def __init__(self, W, b):
     
-    self.system = NonLinPendulum_train(W, b, 0.0)
+    self.system = NonLinPendulum_train2l(W, b, 0.0)
     self.A = self.system.A
     self.B = self.system.B
     self.C = self.system.C
@@ -44,9 +45,8 @@ class LMI_3l_int():
     
     Z1 = cp.Variable((self.neurons[0], self.nx))
     Z2 = cp.Variable((self.neurons[1], self.nx))
-    Z3 = cp.Variable((self.neurons[2], self.nx))
-    Z4 = cp.Variable((1, self.nx))
-    self.Z = cp.vstack([Z1, Z2, Z3, Z4])
+    Z3 = cp.Variable((1, self.nx))
+    self.Z = cp.vstack([Z1, Z2, Z3])
     
     # Parameters definition
     self.alpha = cp.Parameter(nonneg=True)
@@ -179,48 +179,29 @@ class LMI_3l_int():
 
 if __name__ == "__main__":
 
-  RL_weights = True
-  
-  if RL_weights:
-    W1_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.0.weight.csv")
-    W2_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.2.weight.csv")
-    W3_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.4.weight.csv")
-    W4_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/action_net.weight.csv")
-    
-    b1_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.0.bias.csv")
-    b2_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.2.bias.csv")
-    b3_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.4.bias.csv")
-    b4_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/action_net.bias.csv")
+  W1_name = os.path.abspath(__file__ + "/../2l/l1.weight.csv")
+  W2_name = os.path.abspath(__file__ + "/../2l/l2.weight.csv")
+  W3_name = os.path.abspath(__file__ + "/../2l/l3.weight.csv")
 
-  else:
-    W1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l1.weight.csv")
-    W2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l2.weight.csv")
-    W3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l3.weight.csv")
-    W4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l4.weight.csv")
-
-    b1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l1.bias.csv")
-    b2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l2.bias.csv")
-    b3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l3.bias.csv")
-    b4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l4.bias.csv")
+  b1_name = os.path.abspath(__file__ + "/../2l/l1.bias.csv")
+  b2_name = os.path.abspath(__file__ + "/../2l/l2.bias.csv")
+  b3_name = os.path.abspath(__file__ + "/../2l/l3.bias.csv")
 
     
   W1 = np.loadtxt(W1_name, delimiter=',')
   W2 = np.loadtxt(W2_name, delimiter=',')
   W3 = np.loadtxt(W3_name, delimiter=',')
-  W4 = np.loadtxt(W4_name, delimiter=',')
-  W4 = W4.reshape((1, len(W4)))
+  W3 = W3.reshape((1, len(W3)))
 
-  W = [W1, W2, W3, W4]
+  W = [W1, W2, W3]
 
-  
   b1 = np.loadtxt(b1_name, delimiter=',')
   b2 = np.loadtxt(b2_name, delimiter=',')
   b3 = np.loadtxt(b3_name, delimiter=',')
-  b4 = np.loadtxt(b4_name, delimiter=',')
   
-  b = [b1, b2, b3, b4] 
+  b = [b1, b2, b3] 
 
-  lmi = LMI_3l_int(W, b)
+  lmi = LMI_2l_int(W, b)
   alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
   lmi.solve(alpha, verbose=True)
   lmi.save_results('Test')
