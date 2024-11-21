@@ -231,4 +231,4 @@ if __name__ == "__main__":
   b = [b1, b2, b3, b4] 
 
   lmi = LMI_3l_int_xETM(W, b)
-  lmi.solve(1.0, verbose=True)
+  # lmi.solve(1.0, verbose=True)

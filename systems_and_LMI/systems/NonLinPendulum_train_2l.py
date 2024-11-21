@@ -97,13 +97,13 @@ class NonLinPendulum_train2l(NonLinPendulum):
       
 if __name__ == "__main__":
 
-  W1_name = os.path.abspath(__file__ + "/../2l/l1.weight.csv")
-  W2_name = os.path.abspath(__file__ + "/../2l/l2.weight.csv")
-  W3_name = os.path.abspath(__file__ + "/../2l/l3.weight.csv")
+  W1_name = os.path.abspath(__file__ + "/../nonlin_2l/l1.weight.csv")
+  W2_name = os.path.abspath(__file__ + "/../nonlin_2l/l2.weight.csv")
+  W3_name = os.path.abspath(__file__ + "/../nonlin_2l/l3.weight.csv")
 
-  b1_name = os.path.abspath(__file__ + "/../2l/l1.bias.csv")
-  b2_name = os.path.abspath(__file__ + "/../2l/l2.bias.csv")
-  b3_name = os.path.abspath(__file__ + "/../2l/l3.bias.csv")
+  b1_name = os.path.abspath(__file__ + "/../nonlin_2l/l1.bias.csv")
+  b2_name = os.path.abspath(__file__ + "/../nonlin_2l/l2.bias.csv")
+  b3_name = os.path.abspath(__file__ + "/../nonlin_2l/l3.bias.csv")
   
   W1 = np.loadtxt(W1_name, delimiter=',')
   W2 = np.loadtxt(W2_name, delimiter=',')

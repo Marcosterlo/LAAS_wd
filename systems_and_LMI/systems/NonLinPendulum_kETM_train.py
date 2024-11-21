@@ -4,8 +4,6 @@ import numpy as np
 import os
 import torch.nn as nn
 import torch
-from scipy.linalg import block_diag
-from scipy.optimize import fsolve
 import warnings
 
 # User warnings filter
@@ -53,8 +51,6 @@ class NonLinPendulum_kETM_train(NonLinPendulum_train):
       lht = (vec1 @ T @ vec2)[0][0] 
       rht = self.rho[l] * self.eta[l]
 
-      r = 1e-4
-      # lht += r * (1 - params.lambdas[l])
       check = lht  > rht
       
       if check:
