@@ -39,7 +39,7 @@ if new_weights:
   P, _, _ = lmi.solve(alpha, verbose=True)
   lmi.save_results('Test')
 else:
-  P = np.load('Test/P.npy')
+  P = np.load('static_ETM/P.npy')
 print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
 in_ellip = False

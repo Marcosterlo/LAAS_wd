@@ -27,8 +27,8 @@ class LMI_3l_int():
     self.Nvw = self.system.N[4]
     self.Nvb = self.system.N[5]
     self.nphi = self.system.nphi
-    self.neurons = self.system.neurons
     self.nlayers = self.system.nlayers
+    self.neurons = [32, 32, 32, 1]
     
     # Constraint related parameters
     self.m_thresh = 1e-6
@@ -45,7 +45,7 @@ class LMI_3l_int():
     Z1 = cp.Variable((self.neurons[0], self.nx))
     Z2 = cp.Variable((self.neurons[1], self.nx))
     Z3 = cp.Variable((self.neurons[2], self.nx))
-    Z4 = cp.Variable((1, self.nx))
+    Z4 = cp.Variable((self.neurons[3], self.nx))
     self.Z = cp.vstack([Z1, Z2, Z3, Z4])
     
     # Parameters definition
@@ -179,7 +179,7 @@ class LMI_3l_int():
 
 if __name__ == "__main__":
 
-  RL_weights = True
+  RL_weights = False
   
   if RL_weights:
     W1_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.0.weight.csv")
@@ -193,15 +193,15 @@ if __name__ == "__main__":
     b4_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/action_net.bias.csv")
 
   else:
-    W1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l1.weight.csv")
-    W2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l2.weight.csv")
-    W3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l3.weight.csv")
-    W4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l4.weight.csv")
+    W1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.0.weight.csv")
+    W2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.2.weight.csv")
+    W3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.4.weight.csv")
+    W4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/action_net.weight.csv")
 
-    b1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l1.bias.csv")
-    b2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l2.bias.csv")
-    b3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l3.bias.csv")
-    b4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/weights/l4.bias.csv")
+    b1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.0.bias.csv")
+    b2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.2.bias.csv")
+    b3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.4.bias.csv")
+    b4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/action_net.bias.csv")
 
     
   W1 = np.loadtxt(W1_name, delimiter=',')
@@ -221,6 +221,7 @@ if __name__ == "__main__":
   b = [b1, b2, b3, b4] 
 
   lmi = LMI_3l_int(W, b)
-  alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
+  # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
+  alpha = 0.0558
   lmi.solve(alpha, verbose=True)
-  lmi.save_results('Test')
+  lmi.save_results('static_ETM')

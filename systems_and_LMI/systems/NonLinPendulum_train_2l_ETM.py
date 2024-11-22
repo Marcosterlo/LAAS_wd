@@ -22,6 +22,7 @@ class NonLinPendulum_train2l_ETM(NonLinPendulum_train2l):
     Z = np.load(Z_name)
     G = np.linalg.inv(T) @ Z
     self.G = np.split(G, [16, 32])
+    self.Z = np.split(Z, [16, 32])
     self.T = []
     for i in range(self.nlayers - 1):
       self.T.append(T[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
@@ -45,11 +46,19 @@ class NonLinPendulum_train2l_ETM(NonLinPendulum_train2l):
       else:
         nu = self.layers[l](torch.tensor(omega.reshape(1, self.W[l].shape[1]))).detach().numpy().reshape(self.W[l].shape[0], 1)
       
-      vec1 = (nu - self.last_w[l]).T
-      T = self.T[l]
-      vec2 = (self.G[l] @ (self.state - self.xstar) - (self.last_w[l] - self.wstar[l]))
+      xtilde = self.state - self.xstar
+      psitilde = nu - self.last_w[l]
+      nutilde = nu - self.wstar[l]
+      vec = np.vstack((xtilde, psitilde, nutilde))
 
-      lht = (vec1 @ T @ vec2)[0][0] 
+      mat = np.block([
+        [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[l])), np.zeros((self.nx, self.neurons[l]))],
+        [self.Z[l], self.T[l], -self.T[l]],
+        [np.zeros((self.neurons[l], self.nx)), np.zeros((self.neurons[l], self.neurons[l])), np.zeros((self.neurons[l], self.neurons[l]))]
+      ])
+
+
+      lht = (vec.T @ mat @ vec)[0][0]
       rht = self.rho[l] * self.eta[l]
 
       check = lht  > rht
@@ -58,12 +67,12 @@ class NonLinPendulum_train2l_ETM(NonLinPendulum_train2l):
         omega = func(torch.tensor(nu)).detach().numpy()
         self.last_w[l] = nu
         e[l] = 1
-        vec1 = (nu - omega).T
-        vec2 = (self.G[l] @ (self.state - self.xstar) - (omega - self.wstar[l]))
-        val[l] = (vec1 @ T @ vec2)[0][0]
+        psitilde = nu - omega
+        vec = np.vstack((xtilde, psitilde, nutilde))
+        val[l] = (vec.T @ mat @ vec)[0][0]
       
       else:
-        val[l] = (vec1 @ T @ vec2)[0][0]
+        val[l] = lht
         omega = self.last_w[l]
         
     l = self.nlayers - 1

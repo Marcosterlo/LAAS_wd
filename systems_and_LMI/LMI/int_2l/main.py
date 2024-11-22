@@ -120,7 +120,7 @@ class LMI_2l_int():
   def solve(self, alpha_val, verbose=False):
     self.alpha.value = alpha_val
     try:
-      self.prob.solve(solver=cp.MOSEK, verbose=False)
+      self.prob.solve(solver=cp.MOSEK, verbose=True)
     except cp.error.SolverError:
       return None, None, None
 

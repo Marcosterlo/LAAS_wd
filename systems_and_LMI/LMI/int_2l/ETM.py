@@ -1,5 +1,5 @@
 from systems_and_LMI.LMI.int_2l.main import LMI_2l_int
-import systems_and_LMI.systems.nonlin_2l.params as params
+import systems_and_LMI.systems.nonlin_2l_ETM.params as params
 import numpy as np
 import cvxpy as cp
 import warnings
@@ -9,7 +9,9 @@ class LMI_2l_int_ETM(LMI_2l_int):
   def __init__(self, W, b):
     super().__init__(W, b)
 
-    gammavec = np.concatenate([params.gammas[i] * np.ones(self.neurons[i]) for i in range(self.nlayers - 1)] + [np.array([1.0])])
+    self.neurons = [16, 16, 1]
+
+    gammavec = np.concatenate([params.gammas[i] * np.ones(self.neurons[i]) for i in range(self.nlayers)])
     gamma = cp.diag(gammavec)
 
     # Constrain matrices definition
@@ -40,7 +42,7 @@ class LMI_2l_int_ETM(LMI_2l_int):
       [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar, self.Abar.T @ self.P @ self.C],
       [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar, self.Bbar.T @ self.P @ self.C],
       [self.C.T @ self.P @ self.Abar, self.C.T @ self.P @ self.Bbar, self.C.T @ self.P @ self.C]
-    ]) - self.M1 @ self.Rphi - self.Rphi.T @ self.M1.T + self.Rs.T @ self.Sinsec @ self.Rs
+    ]) + self.M1 @ self.Rphi + self.Rphi.T @ self.M1.T + self.Rs.T @ self.Sinsec @ self.Rs
     
     # Constraints definiton
     self.constraints = [self.P >> 0]
@@ -107,4 +109,4 @@ if __name__ == "__main__":
   # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
   alpha = 0.1
   lmi.solve(alpha, verbose=True)
-  # lmi.save_results('res_ETM')
+  lmi.save_results('res_ETM')

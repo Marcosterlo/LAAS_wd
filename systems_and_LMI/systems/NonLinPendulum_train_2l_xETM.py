@@ -1,5 +1,5 @@
 from systems_and_LMI.systems.NonLinPendulum_train_2l import NonLinPendulum_train2l
-import systems_and_LMI.systems.nonlin_2l_xETM.params as params
+import systems_and_LMI.systems.nonlin_2l_ETM.params as params
 import numpy as np
 import os
 import torch.nn as nn
@@ -15,20 +15,17 @@ class NonLinPendulum_train2l_xETM(NonLinPendulum_train2l):
   def __init__(self, W, b, ref):
     super().__init__(W, b, ref)
 
-    Z_name = os.path.abspath(__file__ + '/../nonlin_2l_xETM/Z.npy')
-    T_name = os.path.abspath(__file__ + '/../nonlin_2l_xETM/T.npy')
+
+    Z_name = os.path.abspath(__file__ + '/../nonlin_2l_ETM/Z.npy')
+    T_name = os.path.abspath(__file__ + '/../nonlin_2l_ETM/T.npy')
     bigX1_name = os.path.abspath(__file__ + '/../nonlin_2l_xETM/bigX1.npy')
     bigX2_name = os.path.abspath(__file__ + '/../nonlin_2l_xETM/bigX2.npy')
-    bigX3_name = os.path.abspath(__file__ + '/../nonlin_2l_xETM/bigX3.npy')
 
     T = np.load(T_name)
     Z = np.load(Z_name)
     self.bigX1 = np.load(bigX1_name)
     self.bigX2 = np.load(bigX2_name)
-    self.bigX3 = np.load(bigX3_name)
-    self.bigX = [self.bigX1, self.bigX2, self.bigX3]
-    G = np.linalg.inv(T) @ Z
-    self.G = np.split(G, [16, 32])
+    self.bigX = [self.bigX1, self.bigX2]
     self.Z = np.split(Z, [16, 32])
     self.T = []
     self.neurons = [16, 16, 1]
@@ -58,16 +55,23 @@ class NonLinPendulum_train2l_xETM(NonLinPendulum_train2l):
       rht = self.rho[l] * self.eta[l]
 
       xtilde = self.state - self.xstar
-      psitilde = self.last_w[l] - self.wstar[l]
+      psitilde = nu - self.last_w[l]
       nutilde = nu - self.wstar[l]
-
       vec = np.vstack([xtilde, psitilde, nutilde])
-      mat = np.block([
+      sec_mat = np.block([
         [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[l])), np.zeros((self.nx, self.neurons[l]))],
         [self.Z[l], self.T[l], -self.T[l]],
         [np.zeros((self.neurons[l], self.nx)), np.zeros((self.neurons[l], self.neurons[l])), np.zeros((self.neurons[l], self.neurons[l]))]
       ])
-      lht = -(vec.T @ mat @ vec)
+      
+      ETM_sector = True
+
+      if ETM_sector:
+        mat = sec_mat
+      else:
+        mat = self.bigX[l]
+
+      lht = (vec.T @ mat @ vec)[0][0]
 
       check = lht > rht
       
@@ -75,19 +79,19 @@ class NonLinPendulum_train2l_xETM(NonLinPendulum_train2l):
         omega = func(torch.tensor(nu)).detach().numpy()
         self.last_w[l] = nu
         e[l] = 1
-        psitilde = omega - self.wstar[l]
+        psitilde = nu - omega
         vec = np.vstack([xtilde, psitilde, nutilde])
-        lht = -(vec.T @ mat @ vec)
-        val[l] = lht[0][0]
+        lht = (vec.T @ mat @ vec)[0][0]
+        val[l] = lht
       
       else:
-        val[l] = lht[0][0]
+        val[l] = lht
         omega = self.last_w[l]
-        
+    
     for i in range(self.nlayers):
       self.eta[i] = (self.rho[i] + self.lam[i]) * self.eta[i] - val[i]
       
-    return nu, e
+    return omega, e
   
   def step(self):
     u, e = self.forward()
@@ -125,11 +129,11 @@ if __name__ == "__main__":
   
   s = NonLinPendulum_train2l_xETM(W, b, 0.0)
 
-  P = np.load(os.path.abspath(__file__ + "/../nonlin_2l_xETM/P.npy"))
+  P = np.load(os.path.abspath(__file__ + "/../nonlin_2l_ETM/P.npy"))
 
   print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
-  ref_bound = 1 * np.pi / 180
+  ref_bound = 5 * np.pi / 180
   in_ellip = False
   while not in_ellip:
     theta = np.random.uniform(-np.pi/2, np.pi/2)
@@ -137,7 +141,7 @@ if __name__ == "__main__":
     x0 = np.array([[theta], [vtheta], [0.0]])
     if (x0).T @ P @ (x0) <= 1.0:
       in_ellip = True
-      ref = np.random.uniform(-ref_bound, ref_bound)*0
+      ref = np.random.uniform(-ref_bound, ref_bound)
       s = NonLinPendulum_train2l_xETM(W, b, ref)
       print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
       s.state = x0
@@ -156,7 +160,7 @@ if __name__ == "__main__":
     inputs.append(u)
     events.append(e)
     etas.append(eta)
-    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) - 2*eta[0] - 2*eta[1] - 2*eta[2])
+    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
 
   states = np.insert(states, 0, x0, axis=0)
   states = np.delete(states, -1, axis=0)
@@ -180,7 +184,7 @@ if __name__ == "__main__":
 
   print(f"Layer 1 has been triggered {layer1_trigger:.1f}% of times")
   print(f"Layer 2 has been triggered {layer2_trigger:.1f}% of times")
-  print(f"Output layer has been triggered {layer3_trigger:.1f}% of times")
+  print(f"Layer 3 has been triggered {layer3_trigger:.1f}% of times")
 
   for i, event in enumerate(events):
     if not event[0]:

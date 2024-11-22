@@ -19,8 +19,8 @@ class NonLinPendulum_kETM_train(NonLinPendulum_train):
     T_name = os.path.abspath(__file__ + '/../nonlin_exp_ROA_kETM/T.npy')
 
     T = np.load(T_name)
-    Z = np.load(Z_name)
-    G = np.linalg.inv(T) @ Z
+    self.Z = np.load(Z_name)
+    G = np.linalg.inv(T) @ self.Z
     self.G = np.split(G, [32, 64, 96])
     self.T = []
     for i in range(self.nlayers - 1):

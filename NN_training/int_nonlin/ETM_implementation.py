@@ -1,5 +1,5 @@
 import os
-from systems_and_LMI.LMI.int_3l.ETM import LMI_3l_int_ETM
+from systems_and_LMI.LMI.int_3l.ETM_sat import LMI_3l_int_ETM_sat
 import numpy as np
 
 W1_name = os.path.abspath(__file__ + "/../new_weights/mlp_extractor.policy_net.0.weight.csv")
@@ -27,7 +27,8 @@ b4 = np.loadtxt(b4_name, delimiter=',')
 
 b = [b1, b2, b3, b4]
 
-lmi = LMI_3l_int_ETM(W, b)
+# lmi = LMI_3l_int_ETM(W, b)
+lmi = LMI_3l_int_ETM_sat(W, b)
 alpha = lmi.search_alpha(0.2, 0, 1e-5, verbose=True)
 P, T, Z = lmi.solve(alpha, verbose=True)
 lmi.save_results('ETM')
