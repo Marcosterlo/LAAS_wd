@@ -120,7 +120,7 @@ class LMI_3l_int():
   def solve(self, alpha_val, verbose=False):
     self.alpha.value = alpha_val
     try:
-      self.prob.solve(solver=cp.MOSEK, verbose=False)
+      self.prob.solve(solver=cp.SCS, verbose=True)
     except cp.error.SolverError:
       return None, None, None
 
@@ -224,4 +224,4 @@ if __name__ == "__main__":
   # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
   alpha = 0.0558
   lmi.solve(alpha, verbose=True)
-  lmi.save_results('static_ETM')
+  # lmi.save_results('static_ETM')

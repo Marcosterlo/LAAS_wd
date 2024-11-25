@@ -62,7 +62,7 @@ class NonLinPendulum_kETM_train_sat(NonLinPendulum_train):
       
       if check:
         omega = func(torch.tensor(nu)).detach().numpy()
-        self.last_w[l] = nu
+        self.last_w[l] = omega
         e[l] = 1
         psitilde = nu - omega
         vec = np.vstack([xtilde, psitilde, nutilde])

@@ -37,7 +37,7 @@ print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 P_static = np.load('static_ETM/P.npy')
 print(f"Size of ROA with static ETM: {np.pi/np.sqrt(np.linalg.det(P_static)):.2f}")
 
-ref_bound = 10 * np.pi / 180
+ref_bound = 5 * np.pi / 180
 in_ellip = False
 while not in_ellip:
   theta = np.random.uniform(-np.pi/2, np.pi/2)
@@ -50,7 +50,7 @@ while not in_ellip:
     print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
     s.state = x0
 
-nsteps = 2000
+nsteps = 10000
 
 states = []
 inputs = []

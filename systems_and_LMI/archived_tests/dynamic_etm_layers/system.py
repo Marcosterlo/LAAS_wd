@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import block_diag
 import os
 import sys
+import params
 
 class System:
   
@@ -73,10 +74,15 @@ class System:
     Nvw = N[:self.nphi, self.nx:]
     Nvb = np.concatenate((self.b[0], self.b[1]))
 
+    self.N = [Nux, Nuw, Nub, Nvx, Nvw, Nvb]
+
     # Auxiliary matrices
     R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
+    self.R = R
     Rw = Nux + Nuw @ R @ Nvx
+    self.Rw = Rw
     Rb = Nuw @ R @ Nvb + Nub
+    self.Rb = Rb
 
     # Equilibrium states
     self.xstar = np.linalg.inv(np.eye(self.A.shape[0]) - self.A - self.B @ Rw) @ self.B @ Rb
@@ -137,9 +143,9 @@ class System:
       # Reshape of wstar vector to make it compatible with last_w
       self.wstar[i] = self.wstar[i].reshape(len(self.wstar[i]), 1)
 
-    self.eta = np.ones(self.nlayer - 1)
-    self.rho = np.array([0.6, 0.4])
-    self.lam = np.array([0.3, 0.5])
+    self.eta = np.ones(self.nlayer - 1)*0
+    self.rho = params.rhos
+    self.lam = params.lambdas
 
     ## Function that predicts the input
   def forward(self, x, ETM, DYNAMIC):
@@ -267,7 +273,7 @@ if __name__ == "__main__":
   lyap = []
 
   # Simulation parameters
-  x0 = np.array([np.pi/4, 1])
+  x0 = np.array([np.pi/6, 0.1])
   # In time it's nstep*s.dt = nstep * 0.02 s
   if len(sys.argv) > 1:
     nstep = int(sys.argv[1])

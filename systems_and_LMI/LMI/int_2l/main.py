@@ -79,7 +79,7 @@ class LMI_2l_int():
       [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar, self.Abar.T @ self.P @ self.C],
       [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar, self.Bbar.T @ self.P @ self.C],
       [self.C.T @ self.P @ self.Abar, self.C.T @ self.P @ self.Bbar, self.C.T @ self.P @ self.C]
-    ]) - self.M1 @ self.Rphi - self.Rphi.T @ self.M1.T + self.Rs.T @ self.Sinsec @ self.Rs
+    ]) + self.M1 @ self.Rphi + self.Rphi.T @ self.M1.T + self.Rs.T @ self.Sinsec @ self.Rs
 
     # Constraints definiton
     self.constraints = [self.P >> 0]

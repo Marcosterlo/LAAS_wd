@@ -77,7 +77,7 @@ class NonLinPendulum_train2l_xETM(NonLinPendulum_train2l):
       
       if check:
         omega = func(torch.tensor(nu)).detach().numpy()
-        self.last_w[l] = nu
+        self.last_w[l] = omega
         e[l] = 1
         psitilde = nu - omega
         vec = np.vstack([xtilde, psitilde, nutilde])
