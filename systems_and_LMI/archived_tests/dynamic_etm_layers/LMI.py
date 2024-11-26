@@ -126,40 +126,40 @@ threshold = 1e-6
 golden_ratio = (1 + np.sqrt(5)) / 2
 error = False
 
-try:
-  while (feasible_extreme - infeasible_extreme > threshold):
-    x1 = feasible_extreme - (feasible_extreme - infeasible_extreme) / golden_ratio
-    x2 = infeasible_extreme + (feasible_extreme - infeasible_extreme) / golden_ratio
-    alpha.value = x1
-    prob.solve(solver=cp.MOSEK, verbose=False)
-    if prob.status in ["infeasible", "unbounded", "unknown"]:
-      fx1 = 1e5
-    else:
-      fx1 = np.max(np.linalg.eigvals(P.value))
-      print(f"\n==================== \nMax eigenvalue of P: {fx1}")
-      print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
-      print(f"Current alpha value: {alpha.value}\n==================== \n")
-    alpha.value = x2
-    prob.solve(solver=cp.MOSEK, verbose=False)
-    if prob.status in ["infeasible", "unbounded", "unknown"]:
-      fx2 = 1e5
-    else:
-      fx2 = np.max(np.linalg.eigvals(P.value))
-      print(f"\n==================== \nMax eigenvalue of P: {fx2}")
-      print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
-      print(f"Current alpha value: {alpha.value}\n==================== \n")
-    if fx1 < fx2:
-      feasible_extreme = x2
-    else:
-      infeasible_extreme = x1
-except cp.error.SolverError:
-  error = True
-  print("Solver error")
-  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}")
-  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
-  print(f"Final alpha value: {alpha.value}")
+# try:
+#   while (feasible_extreme - infeasible_extreme > threshold):
+#     x1 = feasible_extreme - (feasible_extreme - infeasible_extreme) / golden_ratio
+#     x2 = infeasible_extreme + (feasible_extreme - infeasible_extreme) / golden_ratio
+#     alpha.value = x1
+#     prob.solve(solver=cp.MOSEK, verbose=False)
+#     if prob.status in ["infeasible", "unbounded", "unknown"]:
+#       fx1 = 1e5
+#     else:
+#       fx1 = np.max(np.linalg.eigvals(P.value))
+#       print(f"\n==================== \nMax eigenvalue of P: {fx1}")
+#       print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+#       print(f"Current alpha value: {alpha.value}\n==================== \n")
+#     alpha.value = x2
+#     prob.solve(solver=cp.MOSEK, verbose=False)
+#     if prob.status in ["infeasible", "unbounded", "unknown"]:
+#       fx2 = 1e5
+#     else:
+#       fx2 = np.max(np.linalg.eigvals(P.value))
+#       print(f"\n==================== \nMax eigenvalue of P: {fx2}")
+#       print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+#       print(f"Current alpha value: {alpha.value}\n==================== \n")
+#     if fx1 < fx2:
+#       feasible_extreme = x2
+#     else:
+#       infeasible_extreme = x1
+# except cp.error.SolverError:
+#   error = True
+#   print("Solver error")
+#   print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}")
+#   print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+#   print(f"Final alpha value: {alpha.value}")
 
-if not error:
-  print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}")
-  print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
-  print(f"Final alpha value: {alpha.value}")
+# if not error:
+#   print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(P.value))}")
+#   print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(M.value))}")
+#   print(f"Final alpha value: {alpha.value}")

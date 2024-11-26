@@ -57,7 +57,7 @@ class LMI_Finsler():
     self.rho = cp.Variable()
 
     # Flag value to use last Z and T values or treat them as variables
-    new_val = False
+    new_val = True
 
     if new_val:
       # Treat T and Z as variables
@@ -66,9 +66,9 @@ class LMI_Finsler():
       self.T1 = self.T[:self.neurons[0], :self.neurons[0]]
       self.T2 = self.T[self.neurons[0]:, self.neurons[0]:]
       
-      self.Z1 = cp.Variable((self.neurons[0], self.nx))
-      self.Z2 = cp.Variable((self.neurons[1], self.nx))
-      self.Z = cp.vstack([self.Z1, self.Z2])
+      self.Z = cp.Variable((sum(self.neurons), self.nx))
+      self.Z1 = self.Z[:self.neurons[0], :]
+      self.Z2 = self.Z[self.neurons[0]:, :]
     else:
       # Import last feasible T and Z values
       self.T = T_old
@@ -149,22 +149,44 @@ class LMI_Finsler():
     finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ hconstr + hconstr.T @ self.N1.T
 
     finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ hconstr + hconstr.T @ self.N2.T
+
+    Rphi = cp.bmat([
+        [np.eye(self.nx), np.zeros((self.nx, self.nphi))],
+        [self.R @ self.Nvx, np.eye(self.nphi) - self.R],
+        [np.zeros((self.nphi, self.nx)), np.eye(self.nphi)]
+    ])
+
+    self.gamma1 = np.ones(self.neurons[0])*self.gamma1
+
+    self.gamma2 = np.ones(self.neurons[1])*self.gamma2
+
+    gammavec = np.concatenate([self.gamma1, self.gamma2], axis=0)
+
+    self.gamma = cp.diag(gammavec)
+
+    # self.mat = cp.bmat([
+    #     [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nphi))],
+    #     [self.gamma1 * self.Z1, -self.gamma1 * self.T1, np.zeros(((self.neurons[0], self.neurons[0]))), self.gamma1 * self.T1, np.zeros(((self.neurons[0], self.neurons[0])))],
+    #     [self.gamma2 * self.Z2,  np.zeros(((self.neurons[0], self.neurons[0]))), -self.gamma2 * self.T2, np.zeros(((self.neurons[0], self.neurons[0]))), self.gamma2 * self.T2]
+    #     # [self.gamma @ self.Z, -self.gamma @ self.T, self.gamma @self.T]
+    # ])
     
-    # Matrix M definition as the increment of Delta V
-    self.M = cp.bmat([
-      [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar],
-      [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar]
-    ]) + self.Rnu.T @ (self.R1.T @ (self.gamma1 * (self.bigX1 + self.bigX1.T)) @ self.R1 + self.R2.T @ (self.gamma2 * (self.bigX2 + self.bigX2.T)) @ self.R2) @ self.Rnu
+    # # Matrix M definition as the increment of Delta V
+    # self.M = cp.bmat([
+    #   [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar],
+    #   [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar]
+    # # ]) + self.Rnu.T @ (self.R1.T @ (self.gamma1 * (self.Omega1 + self.Omega1.T)) @ self.R1 + self.R2.T @ (self.gamma2 * (self.Omega2 + self.Omega2.T)) @ self.R2) @ self.Rnu
+    # ]) + Rphi.T @ mat.T + mat @ Rphi
 
     # Constraints definiton
     self.constraints = [self.P >> 0]
     if new_val:
       self.constraints += [self.T >> 0]
-    self.constraints += [finsler1 << 0]
-    self.constraints += [finsler2 << 0]
-    self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
-    self.constraints += [self.rho >= 0]
-    self.constraints += [self.M + self.rho * np.eye(self.M.shape[0]) >> 0]
+    # self.constraints += [finsler1 << 0]
+    # self.constraints += [finsler2 << 0]
+    # self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
+    # self.constraints += [self.rho >= 0]
+    # self.constraints += [self.M + self.rho * np.eye(self.M.shape[0]) >> 0]
 
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -189,14 +211,14 @@ class LMI_Finsler():
     
   def solve(self, alpha_val, verbose=False):
     self.alpha.value = alpha_val
-    try:
-      self.prob.solve(solver=cp.MOSEK, verbose=True)
+    # try:
+    self.prob.solve(solver=cp.MOSEK, verbose=True, accept_unknown=True)
       # self.prob.solve(solver=cp.SCS, verbose=True, max_iters=1000000)
-    except cp.error.SolverError:
-      print(f"_____________")
-      print(f"Solver error")
-      print(f"_____________")
-      return None, None, None
+    # except cp.error.SolverError:
+    #   print(f"_____________")
+    #   print(f"Solver error")
+    #   print(f"_____________")
+    #   return None, None, None
 
     if self.prob.status not in ["optimal", "optimal_inaccurate"]:
       print(f"_____________")
@@ -258,7 +280,7 @@ class LMI_Finsler():
 if __name__ == "__main__":
   lmi = LMI_Finsler()
   # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
-  alpha = 9 * 1e-4
-  X1, X2, P, T, Z = lmi.solve(alpha, verbose=True)
-  if P is not None:
-    lmi.save_results('maybe')
+  # alpha = 9 * 1e-4
+  # P, T, Z = lmi.solve(alpha, verbose=True)
+  # if P is not None:
+    # lmi.save_results('maybe')
