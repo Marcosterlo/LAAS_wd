@@ -15,10 +15,10 @@ class Better_System(System):
     
     T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
     Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
-    # T_mat_name = os.path.abspath(__file__ + "/../mat-weights/xT.npy")
-    # Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/xZ.npy")
-    bigX1_name = os.path.abspath(__file__ + "/../Test/bigX1.npy")
-    bigX2_name = os.path.abspath(__file__ + "/../Test/bigX2.npy")
+    # bigX1_name = os.path.abspath(__file__ + "/../Test/bigX1.npy")
+    # bigX2_name = os.path.abspath(__file__ + "/../Test/bigX2.npy")
+    bigX1_name = os.path.abspath(__file__ + "/../new/bigX1.npy")
+    bigX2_name = os.path.abspath(__file__ + "/../new/bigX2.npy")
 
     T = np.load(T_mat_name)
     Z = np.load(Z_mat_name)
@@ -106,11 +106,12 @@ if __name__ == "__main__":
   s.state = x0
 
   if xETM:
-    P = np.load('Test/P.npy')
+    P = np.load('new/P.npy')
+    # P = np.load('Test/P.npy')
   else:
     P = np.load('mat-weights/P_try.npy')
-  
-  nsteps = 2500
+
+  nsteps = 500
 
   states = []
   inputs = []

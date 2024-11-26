@@ -8,6 +8,8 @@ import warnings
 class LMI_Finsler():
   
   def __init__(self):
+
+    # Parameters import
     self.system = System()
     self.A = self.system.A
     self.B = self.system.B
@@ -32,41 +34,70 @@ class LMI_Finsler():
     self.gamma2 = self.gammas[1]
     self.eta0 = params.eta0
     self.nbigx = self.nx + self.neurons[0] * 2
+
+    # Old results import
+    T_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
+    Z_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
+    T_old = np.load(T_name)
+    Z_old = np.load(Z_name)
+    Z1_old = Z_old[:self.neurons[0], :]
+    Z2_old = Z_old[self.neurons[0]:, :]
+    T1_old = T_old[:self.neurons[0], :self.neurons[0]]
+    T2_old = T_old[self.neurons[0]:, self.neurons[0]:]
+    self.T_old = T_old
+    self.Z_old = Z_old
     
     # Constraint related parameters
     self.m_thresh = 1e-6
     
     # Variables definition
     self.P = cp.Variable((self.nx, self.nx), symmetric=True)
-    T_val = cp.Variable(self.nphi)
-    self.T = cp.diag(T_val)
-    self.T1 = self.T[:self.neurons[0], :self.neurons[0]]
-    self.T2 = self.T[self.neurons[0]:, self.neurons[0]:]
-    
-    self.Z1 = cp.Variable((self.neurons[0], self.nx))
-    self.Z2 = cp.Variable((self.neurons[1], self.nx))
-    self.Z = cp.vstack([self.Z1, self.Z2])
 
-    # self.bigX1 = cp.Variable((self.nbigx, self.nbigx))
-    # self.bigX2 = cp.Variable((self.nbigx, self.nbigx))
-    # self.bigX = cp.bmat([
-    #   [self.bigX1, np.zeros((self.bigX1.shape[0], self.bigX2.shape[1]))],
-    #   [np.zeros((self.bigX2.shape[0], self.bigX1.shape[1])), self.bigX2]
-    # ])
+    # used ot bound Delta V matrix and as objective function to minimize
+    self.rho = cp.Variable()
 
-    # self.N1 = cp.Variable((self.nx, self.nphi))
-    # self.N2 = cp.Variable((self.nphi, self.nphi))
-    # self.N3 = cp.Variable((self.nphi, self.nphi))
-    # self.N = cp.vstack([self.N1, self.N2, self.N3])
+    # Flag value to use last Z and T values or treat them as variables
+    new_val = False
+
+    if new_val:
+      # Treat T and Z as variables
+      T_val = cp.Variable(self.nphi)
+      self.T = cp.diag(T_val)
+      self.T1 = self.T[:self.neurons[0], :self.neurons[0]]
+      self.T2 = self.T[self.neurons[0]:, self.neurons[0]:]
+      
+      self.Z1 = cp.Variable((self.neurons[0], self.nx))
+      self.Z2 = cp.Variable((self.neurons[1], self.nx))
+      self.Z = cp.vstack([self.Z1, self.Z2])
+    else:
+      # Import last feasible T and Z values
+      self.T = T_old
+      self.T1 = T1_old
+      self.T2 = T2_old
+      self.Z = Z_old
+      self.Z1 = Z1_old
+      self.Z2 = Z2_old
+
+    # New matrices to be used in the ETM
+    self.bigX1 = cp.Variable((self.nbigx, self.nbigx))
+    self.bigX2 = cp.Variable((self.nbigx, self.nbigx))
+
+    # Finsler multipliers
+    self.N11 = cp.Variable((self.nx, self.nphi))
+    self.N12 = cp.Variable((self.nphi, self.nphi))
+    self.N13 = cp.Variable((self.nphi, self.nphi))
+    self.N1 = cp.vstack([self.N11, self.N12, self.N13])
+
+    self.N21 = cp.Variable((self.nx, self.nphi))
+    self.N22 = cp.Variable((self.nphi, self.nphi))
+    self.N23 = cp.Variable((self.nphi, self.nphi))
+    self.N2 = cp.vstack([self.N21, self.N22, self.N23])
 
     # Auxiliary parameters
     self.Abar = self.A + self.B @ self.Rw
     self.Bbar = -self.B @ self.Nuw @ self.R
-    # self.bigXbar = cp.bmat([
-    #   [self.gamma1 * self.bigX1, np.zeros((self.bigX1.shape[0], self.bigX2.shape[1]))],
-    #   [np.zeros((self.bigX2.shape[0], self.bigX1.shape[1])), self.gamma2 * self.bigX2]
-    # ])
     
+    # Useful variables to build the transformation matrices
     idx = np.eye(self.nx) / (self.nlayers - 1) 
     xzero = np.zeros((self.nx, self.neurons[0]))
 
@@ -74,30 +105,34 @@ class LMI_Finsler():
     zero = np.zeros((self.neurons[0], self.neurons[0]))
     zerox = np.zeros((self.neurons[0], self.nx))
 
-    self.Rxi = np.block([
+    # Old ETM (and sec condition) structures with respect to vector [tilde x, tilde psi, tilde nu]
+    self.Omega1 = cp.bmat([
+      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[0])), np.zeros((self.nx, self.neurons[0]))],
+      [self.Z1, self.T1, -self.T1],
+      [np.zeros((self.neurons[0], self.nx)), np.zeros((self.neurons[0], self.neurons[0])), np.zeros((self.neurons[0], self.neurons[0]))]
+    ])
+
+    self.Omega2 = cp.bmat([
+      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[1])), np.zeros((self.nx, self.neurons[1]))],
+      [self.Z2, self.T2, -self.T2],
+      [np.zeros((self.neurons[1], self.nx)), np.zeros((self.neurons[1], self.neurons[1])), np.zeros((self.neurons[1], self.neurons[1]))]
+    ])
+    
+    # Transformation matrix to pass from xi = [x, psi1, psi2, nu1, nu2] to [x, psi1, nu1]
+    self.R1 = cp.bmat([
       [idx, xzero, xzero, xzero, xzero],
       [zerox, id, zero, zero, zero],
       [zerox, zero, zero, id, zero],
-      [idx, xzero, xzero, xzero, xzero],
-      [zerox, zero, id, zero, zero],
-      [zerox, zero, zero, zero, id]
     ])
 
-    # self.Omega1 = cp.bmat([
-    #   [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[0])), np.zeros((self.nx, self.neurons[0]))],
-    #   [self.Z1, self.T1, -self.T1],
-    #   [np.zeros((self.neurons[0], self.nx)), np.zeros((self.neurons[0], self.neurons[0])), np.zeros((self.neurons[0], self.neurons[0]))]
-    # ])
-    # self.Omega2 = cp.bmat([
-    #   [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[1])), np.zeros((self.nx, self.neurons[1]))],
-    #   [self.Z2, self.T2, -self.T2],
-    #   [np.zeros((self.neurons[1], self.nx)), np.zeros((self.neurons[1], self.neurons[1])), np.zeros((self.neurons[1], self.neurons[1]))]
-    # ])
-    # self.Omega = cp.bmat([
-    #   [self.Omega1, np.zeros((self.Omega1.shape[0], self.Omega2.shape[1]))],
-    #   [np.zeros((self.Omega2.shape[0], self.Omega1.shape[1])), self.Omega2]
-    # ])
+    # Transformation matrix to pass from xi = [x, psi1, psi2, nu1, nu2] to [x, psi2, nu2]
+    self.R2 = cp.bmat([
+      [idx, xzero, xzero, xzero, xzero],
+      [zerox, zero, id, zero, zero],
+      [zerox, zero, zero, zero, id],
+    ])
 
+    # Transformation matrix to pass from xi = [x, psi1, psi2, nu1, nu2] to [x, psi1, psi2]
     self.Rnu = cp.bmat([
       [np.eye(self.nx), np.zeros((self.nx, self.nphi))],
       [np.zeros((self.nphi, self.nx)), np.eye(self.nphi)],
@@ -108,72 +143,28 @@ class LMI_Finsler():
     self.alpha = cp.Parameter(nonneg=True)
     
     # Constrain matrices definition
-    # hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)]) 
+    # Finsler constraint to handle nu with respect to x and psi
+    hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)]) 
 
-    # newconstr = self.Rxi.T @ (self.bigX - self.Omega + self.bigX.T - self.Omega.T) @ self.Rxi + self.N @ hconstr + hconstr.T @ self.N.T
-    # T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
-    # Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
-    # T = np.load(T_mat_name)
-    # Z = np.load(Z_mat_name)
-    # self.Tlist = T
-    # self.Zlist = Z
-    # self.Z = np.split(Z, [32, 64])
-    # self.T = []
-    # neurons = [32, 32]
-    # for i in range(2):
-    #   self.T.append(T[i*neurons[i]:(i+1)*neurons[i], i*neurons[i]:(i+1)*neurons[i]])
-    self.Omega1 = cp.bmat([
-      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[0])), np.zeros((self.nx, self.neurons[0]))],
-      [self.gamma1 * self.Z1, self.gamma1 * self.T1, -self.gamma1* self.T1],
-      [np.zeros((self.neurons[0], self.nx)), np.zeros((self.neurons[0], self.neurons[0])), np.zeros((self.neurons[0], self.neurons[0]))]
-    ])
-    self.Omega2 = cp.bmat([
-      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[1])), np.zeros((self.nx, self.neurons[1]))],
-      [self.gamma2 * self.Z2, self.gamma2 * self.T2, -self.gamma2 * self.T2],
-      [np.zeros((self.neurons[1], self.nx)), np.zeros((self.neurons[1], self.neurons[1])), np.zeros((self.neurons[1], self.neurons[1]))]
-    ])
-    self.Omega = cp.bmat([
-      [self.Omega1, np.zeros((self.Omega1.shape[0], self.Omega2.shape[1]))],
-      [np.zeros((self.Omega2.shape[0], self.Omega1.shape[1])), self.Omega2]
-    ])
-    # newconstr = self.Rxi.T @ (self.bigX - self.Omega + self.bigX.T - self.Omega.T) @ self.Rxi
+    finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ hconstr + hconstr.T @ self.N1.T
 
-    Rphi = cp.bmat([
-        [np.eye(self.nx), np.zeros((self.nx, self.nphi))],
-        [self.R @ self.Nvx, np.eye(self.nphi) - self.R],
-        [np.zeros((self.nphi, self.nx)), np.eye(self.nphi)]
-    ])
+    finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ hconstr + hconstr.T @ self.N2.T
     
-    self.Rnu = cp.bmat([
-      [np.eye(self.nx), np.zeros((self.nx, self.nphi))],
-      [np.zeros((self.nphi, self.nx)), np.eye(self.nphi)],
-      [self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R]
-    ])
-
-    gamma1 = np.ones(32)*self.gamma1
-
-    gamma2 = np.ones(32)*self.gamma2
-
-    gammavec = np.concatenate([gamma1, gamma2], axis=0)
-
-    gamma = cp.diag(gammavec)
-
-    mat = cp.bmat([
-        [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nphi))],
-        [gamma @ self.Z, -gamma @ self.T, gamma @ self.T]
-    ])
-
+    # Matrix M definition as the increment of Delta V
     self.M = cp.bmat([
       [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar],
       [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar]
-    ]) + self.Rnu.T @ self.Rxi.T @ (self.Omega + self.Omega.T) @ self.Rxi @ self.Rnu
-    # ]) + Rphi.T @ mat.T + mat @ Rphi
+    ]) + self.Rnu.T @ (self.R1.T @ (self.gamma1 * (self.bigX1 + self.bigX1.T)) @ self.R1 + self.R2.T @ (self.gamma2 * (self.bigX2 + self.bigX2.T)) @ self.R2) @ self.Rnu
 
     # Constraints definiton
     self.constraints = [self.P >> 0]
-    self.constraints += [self.T >> 0]
-    # self.constraints += [newconstr << 0]
+    if new_val:
+      self.constraints += [self.T >> 0]
+    self.constraints += [finsler1 << 0]
+    self.constraints += [finsler2 << 0]
     self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
+    self.constraints += [self.rho >= 0]
+    self.constraints += [self.M + self.rho * np.eye(self.M.shape[0]) >> 0]
 
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -188,7 +179,7 @@ class LMI_Finsler():
         self.constraints += [ellip >> 0]
     
     # Objective function definition
-    self.objective = cp.Minimize(cp.trace(self.P))
+    self.objective = cp.Minimize(self.rho)
 
     # Problem definition
     self.prob = cp.Problem(self.objective, self.constraints)
@@ -200,10 +191,17 @@ class LMI_Finsler():
     self.alpha.value = alpha_val
     try:
       self.prob.solve(solver=cp.MOSEK, verbose=True)
+      # self.prob.solve(solver=cp.SCS, verbose=True, max_iters=1000000)
     except cp.error.SolverError:
+      print(f"_____________")
+      print(f"Solver error")
+      print(f"_____________")
       return None, None, None
 
     if self.prob.status not in ["optimal", "optimal_inaccurate"]:
+      print(f"_____________")
+      print(f"Non feasible, status: {self.prob.status}")
+      print(f"_____________")
       return None, None, None
     else:
       if verbose:
@@ -261,5 +259,6 @@ if __name__ == "__main__":
   lmi = LMI_Finsler()
   # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
   alpha = 9 * 1e-4
-  lmi.solve(alpha, verbose=True)
-  # lmi.save_results('Test')
+  X1, X2, P, T, Z = lmi.solve(alpha, verbose=True)
+  if P is not None:
+    lmi.save_results('maybe')
