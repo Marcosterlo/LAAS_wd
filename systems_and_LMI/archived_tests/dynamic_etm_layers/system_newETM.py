@@ -102,8 +102,6 @@ if __name__ == "__main__":
   import matplotlib.pyplot as plt
 
   s = Better_System()
-  x0 = np.array([np.pi/6, 0.1])
-  s.state = x0
 
   if xETM:
     P = np.load('new/P.npy')
@@ -112,6 +110,16 @@ if __name__ == "__main__":
     P = np.load('mat-weights/P_try.npy')
 
   nsteps = 500
+  in_ellip = False
+  while not in_ellip:
+    t0 = np.random.uniform(-np.pi, np.pi)
+    v0 = np.random.uniform(-10, 10)
+    x0 = np.array([t0, v0])
+    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1:
+      in_ellip = True
+      s.state = x0
+
+  print(f"Initial state: theta0: {x0[0]*180/np.pi}, v0: {x0[1]}")
 
   states = []
   inputs = []
@@ -141,6 +149,11 @@ if __name__ == "__main__":
   events = np.squeeze(np.array(events))
   etas = np.squeeze(np.array(etas))
   lyap = np.squeeze(np.array(lyap))
+  lyap_diff = np.diff(lyap)
+  if np.all(lyap_diff <= 0):
+    print("Lyapunov function is always decreasing.")
+  else:
+    print("Lyapunov function is not always decreasing.")
 
   timegrid = np.arange(0, nsteps)
 

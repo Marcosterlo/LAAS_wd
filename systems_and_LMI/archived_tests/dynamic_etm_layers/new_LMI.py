@@ -30,25 +30,27 @@ class LMI_Finsler():
     self.neurons = [32, 32]
     self.nlayers = 3
     self.gammas = params.gammas
-    self.gamma1 = self.gammas[0]
-    self.gamma2 = self.gammas[1]
+    self.gamma1_scal = self.gammas[0]
+    self.gamma2_scal = self.gammas[1]
     self.eta0 = params.eta0
     self.nbigx = self.nx + self.neurons[0] * 2
 
     # Old results import
-    T_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
-    Z_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
-    T_old = np.load(T_name)
-    Z_old = np.load(Z_name)
-    Z1_old = Z_old[:self.neurons[0], :]
-    Z2_old = Z_old[self.neurons[0]:, :]
-    T1_old = T_old[:self.neurons[0], :self.neurons[0]]
-    T2_old = T_old[self.neurons[0]:, self.neurons[0]:]
-    self.T_old = T_old
-    self.Z_old = Z_old
+    # T_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
+    # Z_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
+    # T_old = np.load(T_name)
+    # Z_old = np.load(Z_name)
+    # Z1_old = Z_old[:self.neurons[0], :]
+    # Z2_old = Z_old[self.neurons[0]:, :]
+    # T1_old = T_old[:self.neurons[0], :self.neurons[0]]
+    # T2_old = T_old[self.neurons[0]:, self.neurons[0]:]
+    # self.T_old = T_old
+    # self.Z_old = Z_old
     
     # Constraint related parameters
     self.m_thresh = 1e-6
+    self.fin_thresh1 = cp.Variable(nonneg=True)
+    self.fin_thresh2 = cp.Variable(nonneg=True)
     
     # Variables definition
     self.P = cp.Variable((self.nx, self.nx), symmetric=True)
@@ -56,27 +58,14 @@ class LMI_Finsler():
     # used ot bound Delta V matrix and as objective function to minimize
     self.rho = cp.Variable()
 
-    # Flag value to use last Z and T values or treat them as variables
-    new_val = True
-
-    if new_val:
-      # Treat T and Z as variables
-      T_val = cp.Variable(self.nphi)
-      self.T = cp.diag(T_val)
-      self.T1 = self.T[:self.neurons[0], :self.neurons[0]]
-      self.T2 = self.T[self.neurons[0]:, self.neurons[0]:]
-      
-      self.Z = cp.Variable((sum(self.neurons), self.nx))
-      self.Z1 = self.Z[:self.neurons[0], :]
-      self.Z2 = self.Z[self.neurons[0]:, :]
-    else:
-      # Import last feasible T and Z values
-      self.T = T_old
-      self.T1 = T1_old
-      self.T2 = T2_old
-      self.Z = Z_old
-      self.Z1 = Z1_old
-      self.Z2 = Z2_old
+    T_val = cp.Variable(self.nphi)
+    self.T = cp.diag(T_val)
+    self.T1 = self.T[:self.neurons[0], :self.neurons[0]]
+    self.T2 = self.T[self.neurons[0]:, self.neurons[0]:]
+    
+    self.Z = cp.Variable((sum(self.neurons), self.nx))
+    self.Z1 = self.Z[:self.neurons[0], :]
+    self.Z2 = self.Z[self.neurons[0]:, :]
 
     # New matrices to be used in the ETM
     self.bigX1 = cp.Variable((self.nbigx, self.nbigx))
@@ -84,13 +73,21 @@ class LMI_Finsler():
 
     # Finsler multipliers
     self.N11 = cp.Variable((self.nx, self.nphi))
-    self.N12 = cp.Variable((self.nphi, self.nphi))
-    self.N13 = cp.Variable((self.nphi, self.nphi))
+    N12 = cp.Variable(self.nphi)
+    self.N12 = cp.diag(N12)
+    N13 = cp.Variable(self.nphi)
+    self.N13 = cp.diag(N13)
+    # self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+    # self.N13 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     self.N1 = cp.vstack([self.N11, self.N12, self.N13])
 
     self.N21 = cp.Variable((self.nx, self.nphi))
-    self.N22 = cp.Variable((self.nphi, self.nphi))
-    self.N23 = cp.Variable((self.nphi, self.nphi))
+    N22 = cp.Variable(self.nphi)
+    self.N22 = cp.diag(N22)
+    N23 = cp.Variable(self.nphi)
+    self.N23 = cp.diag(N23)
+    # self.N22 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+    # self.N23 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     self.N2 = cp.vstack([self.N21, self.N22, self.N23])
 
     # Auxiliary parameters
@@ -98,7 +95,7 @@ class LMI_Finsler():
     self.Bbar = -self.B @ self.Nuw @ self.R
     
     # Useful variables to build the transformation matrices
-    idx = np.eye(self.nx) / (self.nlayers - 1) 
+    idx = np.eye(self.nx)
     xzero = np.zeros((self.nx, self.neurons[0]))
 
     id = np.eye(self.neurons[0])
@@ -144,49 +141,40 @@ class LMI_Finsler():
     
     # Constrain matrices definition
     # Finsler constraint to handle nu with respect to x and psi
-    hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)]) 
+    self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)]) 
 
-    finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ hconstr + hconstr.T @ self.N1.T
-
-    finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ hconstr + hconstr.T @ self.N2.T
-
-    Rphi = cp.bmat([
-        [np.eye(self.nx), np.zeros((self.nx, self.nphi))],
-        [self.R @ self.Nvx, np.eye(self.nphi) - self.R],
-        [np.zeros((self.nphi, self.nx)), np.eye(self.nphi)]
+    xzerox = np.zeros((self.nx, self.nx))
+    self.R1f = cp.bmat([
+      [xzerox, xzero, xzero, xzero, xzero],
+      [zerox, id, zero, zero, zero],
+      [zerox, zero, zero, id, zero],
+    ])
+    self.R2f = cp.bmat([
+      [xzerox, xzero, xzero, xzero, xzero],
+      [zerox, zero, id, zero, zero],
+      [zerox, zero, zero, zero, id],
     ])
 
-    self.gamma1 = np.ones(self.neurons[0])*self.gamma1
+    self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.R2f.T @ (self.fin_thresh1 * np.eye(66)) @ self.R2f + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
 
-    self.gamma2 = np.ones(self.neurons[1])*self.gamma2
+    self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.R1f.T @ (self.fin_thresh2 * np.eye(66)) @ self.R1f + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
 
-    gammavec = np.concatenate([self.gamma1, self.gamma2], axis=0)
-
-    self.gamma = cp.diag(gammavec)
-
-    # self.mat = cp.bmat([
-    #     [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nphi))],
-    #     [self.gamma1 * self.Z1, -self.gamma1 * self.T1, np.zeros(((self.neurons[0], self.neurons[0]))), self.gamma1 * self.T1, np.zeros(((self.neurons[0], self.neurons[0])))],
-    #     [self.gamma2 * self.Z2,  np.zeros(((self.neurons[0], self.neurons[0]))), -self.gamma2 * self.T2, np.zeros(((self.neurons[0], self.neurons[0]))), self.gamma2 * self.T2]
-    #     # [self.gamma @ self.Z, -self.gamma @ self.T, self.gamma @self.T]
-    # ])
-    
-    # # Matrix M definition as the increment of Delta V
-    # self.M = cp.bmat([
-    #   [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar],
-    #   [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar]
-    # # ]) + self.Rnu.T @ (self.R1.T @ (self.gamma1 * (self.Omega1 + self.Omega1.T)) @ self.R1 + self.R2.T @ (self.gamma2 * (self.Omega2 + self.Omega2.T)) @ self.R2) @ self.Rnu
-    # ]) + Rphi.T @ mat.T + mat @ Rphi
+    # Matrix M definition as the increment of Delta V
+    self.M = cp.bmat([
+      [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar],
+      [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar]
+    ]) + self.Rnu.T @ (self.R1.T @ (self.gamma1_scal * (self.bigX1 + self.bigX1.T)) @ self.R1 + self.R2.T @ (self.gamma2_scal * (self.bigX2 + self.bigX2.T)) @ self.R2) @ self.Rnu
 
     # Constraints definiton
     self.constraints = [self.P >> 0]
-    if new_val:
-      self.constraints += [self.T >> 0]
-    # self.constraints += [finsler1 << 0]
-    # self.constraints += [finsler2 << 0]
-    # self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
-    # self.constraints += [self.rho >= 0]
-    # self.constraints += [self.M + self.rho * np.eye(self.M.shape[0]) >> 0]
+    self.constraints += [self.T >> 0]
+    self.constraints += [self.fin_thresh1 >= 0]
+    self.constraints += [self.fin_thresh2 >= 0]
+    self.constraints += [self.finsler1 << 0]
+    self.constraints += [self.finsler2 << 0]
+    self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
+    self.constraints += [self.rho >= 0]
+    self.constraints += [self.M + self.rho * np.eye(self.M.shape[0]) >> 0]
 
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -207,12 +195,12 @@ class LMI_Finsler():
     self.prob = cp.Problem(self.objective, self.constraints)
 
     # User warnings filter
-    warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
+    # warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
     
   def solve(self, alpha_val, verbose=False):
     self.alpha.value = alpha_val
     # try:
-    self.prob.solve(solver=cp.MOSEK, verbose=True, accept_unknown=True)
+    self.prob.solve(solver=cp.MOSEK, verbose=True)
       # self.prob.solve(solver=cp.SCS, verbose=True, max_iters=1000000)
     # except cp.error.SolverError:
     #   print(f"_____________")
@@ -280,7 +268,7 @@ class LMI_Finsler():
 if __name__ == "__main__":
   lmi = LMI_Finsler()
   # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
-  # alpha = 9 * 1e-4
-  # P, T, Z = lmi.solve(alpha, verbose=True)
+  alpha = 9 * 1e-4
+  P, T, Z = lmi.solve(alpha, verbose=True)
   # if P is not None:
-    # lmi.save_results('maybe')
+  #   lmi.save_results('maybe')
