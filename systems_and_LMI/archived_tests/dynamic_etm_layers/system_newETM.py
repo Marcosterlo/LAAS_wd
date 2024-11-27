@@ -4,6 +4,7 @@ import numpy as np
 import torch.nn as nn
 import torch
 from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
+from systems_and_LMI.user_defined_functions.animation import animate_pendulum
 import params
 
 xETM = True
@@ -211,3 +212,5 @@ if __name__ == "__main__":
   ax.plot(s.xstar[0], s.xstar[1], marker='o', markersize=5, color='r')
   plt.legend()
   plt.show()
+  
+  animate_pendulum(states[:, 0]*np.pi/180 + np.pi, s.xstar[0]*np.pi/180 + np.pi, L=1.0)
