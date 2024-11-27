@@ -32,7 +32,6 @@ class LMI_Finsler():
     self.gammas = params.gammas
     self.gamma1_scal = self.gammas[0]
     self.gamma2_scal = self.gammas[1]
-    self.eta0 = params.eta0
     self.nbigx = self.nx + self.neurons[0] * 2
 
     # Old results import
@@ -49,8 +48,6 @@ class LMI_Finsler():
     
     # Constraint related parameters
     self.m_thresh = 1e-6
-    self.fin_thresh1 = cp.Variable(nonneg=True)
-    self.fin_thresh2 = cp.Variable(nonneg=True)
     
     # Variables definition
     self.P = cp.Variable((self.nx, self.nx), symmetric=True)
@@ -73,20 +70,16 @@ class LMI_Finsler():
 
     # Finsler multipliers
     self.N11 = cp.Variable((self.nx, self.nphi))
-    N12 = cp.Variable(self.nphi)
-    self.N12 = cp.diag(N12)
+    self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     N13 = cp.Variable(self.nphi)
     self.N13 = cp.diag(N13)
-    # self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     # self.N13 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     self.N1 = cp.vstack([self.N11, self.N12, self.N13])
 
     self.N21 = cp.Variable((self.nx, self.nphi))
-    N22 = cp.Variable(self.nphi)
-    self.N22 = cp.diag(N22)
+    self.N22 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     N23 = cp.Variable(self.nphi)
     self.N23 = cp.diag(N23)
-    # self.N22 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     # self.N23 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     self.N2 = cp.vstack([self.N21, self.N22, self.N23])
 
@@ -143,21 +136,9 @@ class LMI_Finsler():
     # Finsler constraint to handle nu with respect to x and psi
     self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)]) 
 
-    xzerox = np.zeros((self.nx, self.nx))
-    self.R1f = cp.bmat([
-      [xzerox, xzero, xzero, xzero, xzero],
-      [zerox, id, zero, zero, zero],
-      [zerox, zero, zero, id, zero],
-    ])
-    self.R2f = cp.bmat([
-      [xzerox, xzero, xzero, xzero, xzero],
-      [zerox, zero, id, zero, zero],
-      [zerox, zero, zero, zero, id],
-    ])
+    self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
 
-    self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.R2f.T @ (self.fin_thresh1 * np.eye(66)) @ self.R2f + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
-
-    self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.R1f.T @ (self.fin_thresh2 * np.eye(66)) @ self.R1f + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
+    self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
 
     # Matrix M definition as the increment of Delta V
     self.M = cp.bmat([
@@ -168,8 +149,6 @@ class LMI_Finsler():
     # Constraints definiton
     self.constraints = [self.P >> 0]
     self.constraints += [self.T >> 0]
-    self.constraints += [self.fin_thresh1 >= 0]
-    self.constraints += [self.fin_thresh2 >= 0]
     self.constraints += [self.finsler1 << 0]
     self.constraints += [self.finsler2 << 0]
     self.constraints += [self.M << -self.m_thresh * np.eye(self.M.shape[0])]
@@ -195,7 +174,7 @@ class LMI_Finsler():
     self.prob = cp.Problem(self.objective, self.constraints)
 
     # User warnings filter
-    # warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
+    warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
     
   def solve(self, alpha_val, verbose=False):
     self.alpha.value = alpha_val
