@@ -17,9 +17,9 @@ class FinalPendulum_xETM(FinalPendulum):
 
     Z_name = os.path.abspath(__file__ + '/../final/Z.npy')
     T_name = os.path.abspath(__file__ + '/../final/T.npy')
-    bigX1_name = os.path.abspath(__file__ + '/../final/Omega1.npy')
-    bigX2_name = os.path.abspath(__file__ + '/../final/Omega2.npy')
-    bigX3_name = os.path.abspath(__file__ + '/../final/Omega3.npy')
+    bigX1_name = os.path.abspath(__file__ + '/../final/bigX1.npy')
+    bigX2_name = os.path.abspath(__file__ + '/../final/bigX2.npy')
+    bigX3_name = os.path.abspath(__file__ + '/../final/bigX3.npy')
    
     T = np.load(T_name)
     Z = np.load(Z_name)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
 
   inputs = np.insert(inputs, 0, np.array(0.0), axis=0)
   inputs = np.delete(inputs, -1, axis=0)
-  inputs = np.squeeze(np.array(inputs))
+  inputs = np.squeeze(np.array(inputs)) * s.max_torque
 
   events = np.squeeze(np.array(events))
   etas = np.squeeze(np.array(etas))

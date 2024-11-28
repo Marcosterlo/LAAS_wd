@@ -25,6 +25,8 @@ class NonLinPendulum_train(NonLinPendulum):
     self.b = b
     
     self.nlayers = 4
+
+    # self.B *= self.max_torque
     
     self.neurons = [32, 32, 32]
     
@@ -42,23 +44,23 @@ class NonLinPendulum_train(NonLinPendulum):
     
     self.nphi = self.W[0].shape[0] + self.W[1].shape[0] + self.W[2].shape[0] + 1
     N = block_diag(*self.W)
-    Nux = np.zeros((self.nu, self.nx))
-    Nuw = np.concatenate([np.zeros((self.nu, self.nphi - 1)), np.array([[1.0]])], axis=1)
-    Nub = np.array([[0.0]])
-    Nvx = N[:, :self.nx]
-    Nvw = np.concatenate([N[:, self.nx:], np.zeros((self.nphi, self.nu))], axis=1)
+    self.Nux = np.zeros((self.nu, self.nx))
+    self.Nuw = np.concatenate([np.zeros((self.nu, self.nphi - 1)), np.array([[self.max_torque / 3]])], axis=1)
+    self.Nub = np.array([[0.0]])
+    self.Nvx = N[:, :self.nx]
+    self.Nvw = np.concatenate([N[:, self.nx:], np.zeros((self.nphi, self.nu))], axis=1)
     try:
-      Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], np.array([self.b[3]])], axis=0).reshape(self.nphi, self.nu)
+      self.Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], np.array([self.b[3]])], axis=0).reshape(self.nphi, self.nu)
     except:
-      Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], self.b[3]], axis=0).reshape(self.nphi, self.nu)
+      self.Nvb = np.concatenate([self.b[0], self.b[1], self.b[2], self.b[3]], axis=0).reshape(self.nphi, self.nu)
     
-    self.N = [Nux, Nuw, Nub, Nvx, Nvw, Nvb]
+    self.N = [self.Nux, self.Nuw, self.Nub, self.Nvx, self.Nvw, self.Nvb]
     
-    R = np.linalg.inv(np.eye(*Nvw.shape) - Nvw)
+    R = np.linalg.inv(np.eye(*self.Nvw.shape) - self.Nvw)
     self.R = R
-    Rw = Nux + Nuw @ R @ Nvx
+    Rw = self.Nux + self.Nuw @ R @ self.Nvx
     self.Rw = Rw
-    Rb = Nuw @ R @ Nvb + Nub
+    Rb = self.Nuw @ R @ self.Nvb + self.Nub
     self.Rb = Rb
     
     def implicit_function(x):
@@ -70,7 +72,7 @@ class NonLinPendulum_train(NonLinPendulum):
 
     self.xstar = fsolve(implicit_function, np.array([[self.constant_reference], [0.0], [0.0]])).reshape(3,1)
 
-    wstar = R @ Nvx @ self.xstar + R @ Nvb
+    wstar = R @ self.Nvx @ self.xstar + R @ self.Nvb
     wstar1 = wstar[:self.neurons[0]]
     wstar2 = wstar[self.neurons[0]:self.neurons[0] + self.neurons[1]]
     wstar3 = wstar[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2]]
@@ -88,7 +90,7 @@ class NonLinPendulum_train(NonLinPendulum):
     return nu
   
   def step(self):
-    u = np.clip(self.forward(), -1.0, 1.0)*self.max_torque
+    u = np.clip(self.forward(), -1.0, 1.0)
     nonlin = np.sin(self.state[0]) - self.state[0]
     self.state = self.A @ self.state + self.B @ u + self.C * nonlin + self.D * self.constant_reference
     return self.state, u

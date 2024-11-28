@@ -21,6 +21,7 @@ class NonLinPendulum_kETM_train_sat(NonLinPendulum_train):
     T = np.load(T_name)
     Z = np.load(Z_name)
     self.Z = np.split(Z, [32, 64, 96])
+    self.mats = []
     self.T = []
     self.neurons = [32, 32, 32, 1]
     for i in range(self.nlayers):
@@ -50,11 +51,12 @@ class NonLinPendulum_kETM_train_sat(NonLinPendulum_train):
       psitilde = nu - self.last_w[l]
       nutilde = nu - self.wstar[l]
       vec = np.vstack([xtilde, psitilde, nutilde])
-      sec_mat = np.block([
-        [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[l])), np.zeros((self.nx, self.neurons[l]))],
-        [self.Z[l], self.T[l], -self.T[l]],
-        [np.zeros((self.neurons[l], self.nx)), np.zeros((self.neurons[l], self.neurons[l])), np.zeros((self.neurons[l], self.neurons[l]))]
-      ])
+      sec_mat = self.mats[l]
+      # sec_mat = np.block([
+      #   [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[l])), np.zeros((self.nx, self.neurons[l]))],
+      #   [self.Z[l], self.T[l], -self.T[l]],
+      #   [np.zeros((self.neurons[l], self.nx)), np.zeros((self.neurons[l], self.neurons[l])), np.zeros((self.neurons[l], self.neurons[l]))]
+      # ])
 
       lht = (vec.T @ sec_mat @ vec)[0][0]
 
@@ -80,7 +82,7 @@ class NonLinPendulum_kETM_train_sat(NonLinPendulum_train):
   
   def step(self):
     u, e = self.forward()
-    u = np.clip(u, -1.0, 1.0)
+    u = np.clip(u, -1.0, 1.0)*self.max_torque / 3
     nonlin = np.sin(self.state[0]) - self.state[0]
     self.state = self.A @ self.state + self.B @ u + self.C * nonlin + self.D * self.constant_reference
     etaval = self.eta.tolist()

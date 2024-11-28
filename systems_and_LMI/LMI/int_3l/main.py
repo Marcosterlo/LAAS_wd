@@ -10,7 +10,7 @@ class LMI_3l_int():
     self.system = NonLinPendulum_train(W, b, 0.0)
     self.A = self.system.A
     self.max_torque = self.system.max_torque
-    self.B = self.system.B * self.max_torque
+    self.B = self.system.B
     self.C = self.system.C
     self.nx = self.system.nx
     self.nq = self.system.nq
@@ -223,5 +223,5 @@ if __name__ == "__main__":
   lmi = LMI_3l_int(W, b)
   # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
   alpha = 0.0558
-  lmi.solve(alpha, verbose=True)
+  P, T, Z = lmi.solve(alpha, verbose=True)
   # lmi.save_results('static_ETM')
