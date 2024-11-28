@@ -15,28 +15,30 @@ class FinalPendulum_xETM(FinalPendulum):
     
     warnings.filterwarnings("ignore", category=UserWarning)
 
-    Z_name = os.path.abspath(__file__ + '/../final/Z.npy')
-    T_name = os.path.abspath(__file__ + '/../final/T.npy')
-    bigX1_name = os.path.abspath(__file__ + '/../final/bigX1.npy')
-    bigX2_name = os.path.abspath(__file__ + '/../final/bigX2.npy')
-    bigX3_name = os.path.abspath(__file__ + '/../final/bigX3.npy')
+    # Z_name = os.path.abspath(__file__ + '/../final/Z.npy')
+    # T_name = os.path.abspath(__file__ + '/../final/T.npy')
+    # bigX1_name = os.path.abspath(__file__ + '/../final/bigX1.npy')
+    # bigX2_name = os.path.abspath(__file__ + '/../final/bigX2.npy')
+    # bigX3_name = os.path.abspath(__file__ + '/../final/bigX3.npy')
    
-    T = np.load(T_name)
-    Z = np.load(Z_name)
-    bigX1 = np.load(bigX1_name)
-    bigX2 = np.load(bigX2_name)
-    bigX3 = np.load(bigX3_name)
-    self.bigX = [bigX1, bigX2, bigX3]
-    self.Z = np.split(Z, [32, 64])
-    self.T = []
-    for i in range(self.nlayers - 1):
-      self.T.append(T[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
+    # T = np.load(T_name)
+    # Z = np.load(Z_name)
+    # bigX1 = np.load(bigX1_name)
+    # bigX2 = np.load(bigX2_name)
+    # bigX3 = np.load(bigX3_name)
+    # self.bigX = [bigX1, bigX2, bigX3]
+    self.bigX = []
+    # self.Z = np.split(Z, [32, 64])
+    # self.T = []
+    # for i in range(self.nlayers - 1):
+    #   self.T.append(T[i*self.neurons[i]:(i+1)*self.neurons[i], i*self.neurons[i]:(i+1)*self.neurons[i]])
     self.eta = np.ones(self.nlayers - 1)*params.eta0
     self.rho = params.rhos
     self.lam = params.lambdas
     self.last_w = []
     for i, neuron in enumerate(self.neurons):
       self.last_w.append(np.zeros((neuron, 1)))
+    self.ustar = (self.Rw @ self.xstar + self.Rb) * self.max_torque
     
   def forward(self):
     func = nn.Hardtanh()
@@ -201,7 +203,7 @@ if __name__ == "__main__":
   fig, axs = plt.subplots(4, 1)
   axs[0].plot(timegrid, inputs, label='Control input')
   axs[0].plot(timegrid, inputs * events[:, 1], marker='o', markerfacecolor='none', linestyle='None')
-  # axs[0].plot(timegrid, timegrid * 0 + s.wstar[-1] * s.max_torque, 'r--')
+  axs[0].plot(timegrid, timegrid * 0 + s.ustar * s.max_torque, 'r--')
   axs[0].set_xlabel('Time steps')
   axs[0].set_ylabel('Values')
   axs[0].legend()

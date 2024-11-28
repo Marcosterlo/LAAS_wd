@@ -225,3 +225,85 @@ if __name__ == "__main__":
   alpha = 0.0558
   P, T, Z = lmi.solve(alpha, verbose=True)
   # lmi.save_results('static_ETM')
+  
+  print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
+
+  from systems_and_LMI.systems.NonLinPendulum_train import NonLinPendulum_train
+  import matplotlib.pyplot as plt
+
+  s = NonLinPendulum_train(W, b, 0.0)
+
+  ref_bound = 5 * np.pi / 180
+  in_ellip = False
+  while not in_ellip:
+    theta = np.random.uniform(-np.pi/2, np.pi/2)
+    vtheta = np.random.uniform(-s.max_speed, s.max_speed)
+    x0 = np.array([[theta], [vtheta], [0.0]])
+    ref = np.random.uniform(-ref_bound, ref_bound)
+    s = NonLinPendulum_train(W, b, ref)
+    if (x0).T @ P @ (x0) <= 1.0:
+      in_ellip = True
+      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+      s.state = x0
+  
+  nsteps = 500
+
+  states = []
+  inputs = []
+  lyap = []
+
+  for i in range(nsteps):
+    state, u = s.step()
+    states.append(state)
+    inputs.append(u)
+    lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
+
+  states = np.insert(states, 0, x0, axis=0)
+  states = np.delete(states, -1, axis=0)
+  states = np.squeeze(np.array(states))
+  states[:, 0] *= 180 / np.pi
+  s.xstar[0] *= 180 / np.pi
+
+  inputs = np.insert(inputs, 0, np.array(0.0), axis=0)
+  inputs = np.delete(inputs, -1, axis=0)
+  inputs = np.squeeze(np.array(inputs))*s.max_torque
+
+  lyap = np.squeeze(np.array(lyap))
+
+  timegrid = np.arange(0, nsteps)
+
+      
+  fig, axs = plt.subplots(4, 1)
+  axs[0].plot(timegrid, inputs, label='Control input')
+  axs[0].plot(timegrid, timegrid * 0 + s.wstar[-1] * s.max_torque, 'r--')
+  axs[0].set_xlabel('Time steps')
+  axs[0].set_ylabel('Values')
+  axs[0].legend()
+  axs[0].grid(True)
+
+  axs[1].plot(timegrid, states[:, 0], label='Position')
+  axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
+  axs[1].set_xlabel('Time steps')
+  axs[1].set_ylabel('Values')
+  axs[1].legend()
+  axs[1].grid(True)
+
+  axs[2].plot(timegrid, states[:, 1], label='Velocity')
+  axs[2].plot(timegrid, timegrid * 0 + s.xstar[1], 'r--')
+  axs[2].set_xlabel('Time steps')
+  axs[2].set_ylabel('Values')
+  axs[2].legend()
+  axs[2].grid(True)
+
+  axs[3].plot(timegrid, states[:, 2], label='Integrator state')
+  axs[3].plot(timegrid, timegrid * 0 + s.xstar[2], 'r--')
+  axs[3].set_xlabel('Time steps')
+  axs[3].set_ylabel('Values')
+  axs[3].legend()
+  axs[3].grid(True)
+  plt.show()
+
+  plt.plot(timegrid, lyap, label='Lyapunov function')
+  plt.legend()
+  plt.grid(True)
+  plt.show()

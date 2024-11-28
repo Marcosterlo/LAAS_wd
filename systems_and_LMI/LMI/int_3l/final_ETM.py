@@ -37,7 +37,7 @@ class LMI_final():
     self.gamma2_scal = self.gammas[1]
     self.gamma3_scal = self.gammas[2]
     self.nbigx = self.nx + self.neurons[0] * 2
-    self.xETM = False
+    self.xETM = True
 
     # Variables definition
     self.P = cp.Variable((self.nx, self.nx), symmetric=True)
@@ -219,8 +219,8 @@ class LMI_final():
         self.constraints += [ellip >> 0]
     
     # Ellipsoid conditions for last saturation
-    ustar = self.Rw @ self.xstar + self.Rb
-    vcap = np.min([np.abs(-self.bound - ustar), np.abs(self.bound - ustar)], axis=0)
+    self.ustar = self.Rw @ self.xstar + self.Rb
+    vcap = np.min([np.abs(-self.bound - self.ustar), np.abs(self.bound - self.ustar)], axis=0)
     ellip = cp.bmat([
         [self.P, cp.reshape(self.Z_sat, (self.nx ,1))],
         [cp.reshape(self.Z_sat, (1, self.nx)), 2*self.alpha*self.T_sat - self.alpha**2*vcap**(-2)] 
@@ -335,5 +335,130 @@ if __name__ == "__main__":
   lmi = LMI_final(W, b)
   # alpha = lmi.search_alpha(1, 0, 1e-5, verbose=True)
   alpha = 1
-  lmi.solve(alpha, verbose=True)
+  P, T, Z = lmi.solve(alpha, verbose=True)
   # lmi.save_results('static_ETM')
+
+  print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
+
+  from systems_and_LMI.systems.FinalPendulum_xETM import FinalPendulum_xETM
+  import matplotlib.pyplot as plt
+
+  s = FinalPendulum_xETM(W, b, 0.0)
+  if lmi.xETM:
+    Omega1 = lmi.bigX1.value
+    Omega2 = lmi.bigX2.value
+    Omega3 = lmi.bigX3.value
+  else:
+    Omega1 = lmi.Omega1.value 
+    Omega2 = lmi.Omega2.value
+    Omega3 = lmi.Omega3.value
+
+  ref_bound = 5 * np.pi / 180
+  in_ellip = False
+  while not in_ellip:
+    theta = np.random.uniform(-np.pi/2, np.pi/2)
+    vtheta = np.random.uniform(-s.max_speed, s.max_speed)
+    x0 = np.array([[theta], [vtheta], [0.0]])
+    ref = np.random.uniform(-ref_bound, ref_bound)
+    s = FinalPendulum_xETM(W, b, ref)
+    if (x0).T @ P @ (x0) <= 1.0:
+      in_ellip = True
+      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+      s.state = x0
+  
+  
+  s.bigX = [Omega1, Omega2, Omega3]
+  
+  nsteps = 500
+
+  states = []
+  inputs = []
+  events = []
+  etas = []
+  lyap = []
+
+  for i in range(nsteps):
+    state, u, e, eta = s.step()
+    states.append(state)
+    inputs.append(u)
+    events.append(e)
+    etas.append(eta)
+    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
+
+  states = np.insert(states, 0, x0, axis=0)
+  states = np.delete(states, -1, axis=0)
+  states = np.squeeze(np.array(states))
+  states[:, 0] *= 180 / np.pi
+  s.xstar[0] *= 180 / np.pi
+
+  inputs = np.insert(inputs, 0, np.array(0.0), axis=0)
+  inputs = np.delete(inputs, -1, axis=0)
+  inputs = np.squeeze(np.array(inputs))*s.max_torque
+
+  events = np.squeeze(np.array(events))
+  etas = np.squeeze(np.array(etas))
+  lyap = np.squeeze(np.array(lyap))
+
+  timegrid = np.arange(0, nsteps)
+
+  layer1_trigger = np.sum(events[:, 0]) / nsteps * 100
+  layer2_trigger = np.sum(events[:, 1]) / nsteps * 100
+  layer3_trigger = np.sum(events[:, 2]) / nsteps * 100
+
+  print(f"Layer 1 has been triggered {layer1_trigger:.1f}% of times")
+  print(f"Layer 2 has been triggered {layer2_trigger:.1f}% of times")
+  print(f"Layer 3 has been triggered {layer3_trigger:.1f}% of times")
+
+  for i, event in enumerate(events):
+    if not event[0]:
+      events[i][0] = None
+    if not event[1]:
+      events[i][1] = None
+    if not event[2]:
+      events[i][2] = None
+      
+  fig, axs = plt.subplots(4, 1)
+  axs[0].plot(timegrid, inputs, label='Control input')
+  axs[0].plot(timegrid, inputs * events[:, 2], marker='o', markerfacecolor='none', linestyle='None')
+  axs[0].plot(timegrid, timegrid * 0 + np.squeeze(s.ustar), 'r--')
+  axs[0].set_xlabel('Time steps')
+  axs[0].set_ylabel('Values')
+  axs[0].legend()
+  axs[0].grid(True)
+
+  axs[1].plot(timegrid, states[:, 0], label='Position')
+  axs[1].plot(timegrid, states[:, 0] * events[:, 2], marker='o', markerfacecolor='none', linestyle='None')
+  axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
+  axs[1].set_xlabel('Time steps')
+  axs[1].set_ylabel('Values')
+  axs[1].legend()
+  axs[1].grid(True)
+
+  axs[2].plot(timegrid, states[:, 1], label='Velocity')
+  axs[2].plot(timegrid, states[:, 1] * events[:, 2], marker='o', markerfacecolor='none', linestyle='None')
+  axs[2].plot(timegrid, timegrid * 0 + s.xstar[1], 'r--')
+  axs[2].set_xlabel('Time steps')
+  axs[2].set_ylabel('Values')
+  axs[2].legend()
+  axs[2].grid(True)
+
+  axs[3].plot(timegrid, states[:, 2], label='Integrator state')
+  axs[3].plot(timegrid, states[:, 2] * events[:, 2], marker='o', markerfacecolor='none', linestyle='None')
+  axs[3].plot(timegrid, timegrid * 0 + s.xstar[2], 'r--')
+  axs[3].set_xlabel('Time steps')
+  axs[3].set_ylabel('Values')
+  axs[3].legend()
+  axs[3].grid(True)
+  plt.show()
+
+  plt.plot(timegrid, etas[:, 0], label='Eta_1')
+  plt.plot(timegrid, etas[:, 1], label='Eta_2')
+  plt.plot(timegrid, etas[:, 2], label='Eta_3')
+  plt.legend()
+  plt.grid(True)
+  plt.show()
+
+  plt.plot(timegrid, lyap, label='Lyapunov function')
+  plt.legend()
+  plt.grid(True)
+  plt.show()

@@ -120,29 +120,15 @@ class LMI_3l_int_ETM(LMI_3l_int):
 if __name__ == "__main__":
   import os
 
-  RL_weights = False
-  
-  if RL_weights:
-    W1_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.0.weight.csv")
-    W2_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.2.weight.csv")
-    W3_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.4.weight.csv")
-    W4_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/action_net.weight.csv")
-    
-    b1_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.0.bias.csv")
-    b2_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.2.bias.csv")
-    b3_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/mlp_extractor.policy_net.4.bias.csv")
-    b4_name = os.path.abspath(__file__ + "/../../../systems/nonlin_norm_weights/action_net.bias.csv")
+  W1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.0.weight.csv")
+  W2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.2.weight.csv")
+  W3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.4.weight.csv")
+  W4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/action_net.weight.csv")
 
-  else:
-    W1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.0.weight.csv")
-    W2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.2.weight.csv")
-    W3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.4.weight.csv")
-    W4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/action_net.weight.csv")
-
-    b1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.0.bias.csv")
-    b2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.2.bias.csv")
-    b3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.4.bias.csv")
-    b4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/action_net.bias.csv")
+  b1_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.0.bias.csv")
+  b2_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.2.bias.csv")
+  b3_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/mlp_extractor.policy_net.4.bias.csv")
+  b4_name = os.path.abspath(__file__ + "/../../../../NN_training/int_nonlin/new_weights/action_net.bias.csv")
 
     
   W1 = np.loadtxt(W1_name, delimiter=',')
@@ -166,6 +152,8 @@ if __name__ == "__main__":
   alpha = 1
   P, T, Z = lmi.solve(alpha, verbose=True)
   # lmi.save_results('static_ETM')
+  
+  print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
   from systems_and_LMI.systems.NonLinPendulum_kETM_train_sat import NonLinPendulum_kETM_train_sat
   import matplotlib.pyplot as plt
@@ -182,7 +170,7 @@ if __name__ == "__main__":
     theta = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
     x0 = np.array([[theta], [vtheta], [0.0]])
-    ref = np.random.uniform(-ref_bound, ref_bound)*0
+    ref = np.random.uniform(-ref_bound, ref_bound)
     s = NonLinPendulum_kETM_train_sat(W, b, ref)
     if (x0).T @ P @ (x0) <= 1.0:
       in_ellip = True
@@ -215,7 +203,7 @@ if __name__ == "__main__":
 
   inputs = np.insert(inputs, 0, np.array(0.0), axis=0)
   inputs = np.delete(inputs, -1, axis=0)
-  inputs = np.squeeze(np.array(inputs))
+  inputs = np.squeeze(np.array(inputs))*s.max_torque
 
   events = np.squeeze(np.array(events))
   etas = np.squeeze(np.array(etas))

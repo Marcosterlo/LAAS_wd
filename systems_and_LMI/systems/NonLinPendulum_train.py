@@ -26,7 +26,7 @@ class NonLinPendulum_train(NonLinPendulum):
     
     self.nlayers = 4
 
-    # self.B *= self.max_torque
+    self.B *= self.max_torque
     
     self.neurons = [32, 32, 32]
     
@@ -45,7 +45,7 @@ class NonLinPendulum_train(NonLinPendulum):
     self.nphi = self.W[0].shape[0] + self.W[1].shape[0] + self.W[2].shape[0] + 1
     N = block_diag(*self.W)
     self.Nux = np.zeros((self.nu, self.nx))
-    self.Nuw = np.concatenate([np.zeros((self.nu, self.nphi - 1)), np.array([[self.max_torque / 3]])], axis=1)
+    self.Nuw = np.concatenate([np.zeros((self.nu, self.nphi - 1)), np.array([[1.0]])], axis=1)
     self.Nub = np.array([[0.0]])
     self.Nvx = N[:, :self.nx]
     self.Nvw = np.concatenate([N[:, self.nx:], np.zeros((self.nphi, self.nu))], axis=1)
