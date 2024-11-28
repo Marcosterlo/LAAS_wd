@@ -9,12 +9,12 @@ class LMI_3l_int():
     
     self.system = NonLinPendulum_train(W, b, 0.0)
     self.A = self.system.A
-    self.B = self.system.B
+    self.max_torque = self.system.max_torque
+    self.B = self.system.B * self.max_torque
     self.C = self.system.C
     self.nx = self.system.nx
     self.nq = self.system.nq
     self.bound = 1
-    self.max_torque = self.system.max_torque
     self.xstar = self.system.xstar
     self.wstar = self.system.wstar
     self.R = self.system.R
@@ -120,7 +120,7 @@ class LMI_3l_int():
   def solve(self, alpha_val, verbose=False):
     self.alpha.value = alpha_val
     try:
-      self.prob.solve(solver=cp.SCS, verbose=True)
+      self.prob.solve(solver=cp.MOSEK, verbose=True)
     except cp.error.SolverError:
       return None, None, None
 

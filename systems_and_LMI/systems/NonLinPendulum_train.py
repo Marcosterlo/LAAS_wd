@@ -43,7 +43,7 @@ class NonLinPendulum_train(NonLinPendulum):
     self.nphi = self.W[0].shape[0] + self.W[1].shape[0] + self.W[2].shape[0] + 1
     N = block_diag(*self.W)
     Nux = np.zeros((self.nu, self.nx))
-    Nuw = np.concatenate([np.zeros((self.nu, self.nphi - 1)), np.array([[self.max_torque]])], axis=1)
+    Nuw = np.concatenate([np.zeros((self.nu, self.nphi - 1)), np.array([[1.0]])], axis=1)
     Nub = np.array([[0.0]])
     Nvx = N[:, :self.nx]
     Nvw = np.concatenate([N[:, self.nx:], np.zeros((self.nphi, self.nu))], axis=1)
@@ -151,4 +151,26 @@ if __name__ == "__main__":
   
   plt.plot(inputs)
   plt.grid(True)
+  plt.show()
+
+  x = np.arange(-100, 101, 1)
+  y = np.arange(-100, 101, 1)
+  vettori = []
+  for xval in x:
+    for y_val in y:
+      state = np.array([[xval], [y_val], [0.0]])
+      s.state = state
+      u = s.forward()
+      vettori.append(u)
+
+  vettori = np.array(vettori).reshape(len(x), len(y))
+  X, Y = np.meshgrid(x, y)
+  Z = vettori.T
+
+  fig = plt.figure()
+  ax = fig.add_subplot(111, projection='3d')
+  ax.plot_surface(X, Y, Z, cmap='viridis')
+  plt.xlabel('x')
+  plt.ylabel('y')
+  ax.set_zlabel('u')
   plt.show()

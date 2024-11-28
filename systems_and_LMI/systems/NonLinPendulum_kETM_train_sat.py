@@ -80,7 +80,7 @@ class NonLinPendulum_kETM_train_sat(NonLinPendulum_train):
   
   def step(self):
     u, e = self.forward()
-    u = np.clip(u, -1.0, 1.0)*self.max_torque
+    u = np.clip(u, -1.0, 1.0)
     nonlin = np.sin(self.state[0]) - self.state[0]
     self.state = self.A @ self.state + self.B @ u + self.C * nonlin + self.D * self.constant_reference
     etaval = self.eta.tolist()

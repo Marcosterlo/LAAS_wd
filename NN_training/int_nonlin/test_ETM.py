@@ -37,20 +37,23 @@ print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 P_static = np.load('static_ETM/P.npy')
 print(f"Size of ROA with static ETM: {np.pi/np.sqrt(np.linalg.det(P_static)):.2f}")
 
-ref_bound = 5 * np.pi / 180
-in_ellip = False
-while not in_ellip:
-  theta = np.random.uniform(-np.pi/2, np.pi/2)
-  vtheta = np.random.uniform(-s.max_speed, s.max_speed)
-  x0 = np.array([[theta], [vtheta], [0.0]])
-  ref = np.random.uniform(-ref_bound, ref_bound)
-  s = NonLinPendulum_kETM_train_sat(W, b, ref)
-  if (x0).T @ P @ (x0) <= 1.0:
-    in_ellip = True
-    print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
-    s.state = x0
+# ref_bound = 5 * np.pi / 180
+# in_ellip = False
+# while not in_ellip:
+#   theta = np.random.uniform(-np.pi/2, np.pi/2)
+#   vtheta = np.random.uniform(-s.max_speed, s.max_speed)
+#   x0 = np.array([[theta], [vtheta], [0.0]])
+#   ref = np.random.uniform(-ref_bound, ref_bound)
+#   s = NonLinPendulum_kETM_train_sat(W, b, ref)
+#   if (x0).T @ P @ (x0) <= 1.0:
+#     in_ellip = True
+#     print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+#     s.state = x0
+x0 = np.array([[np.pi/12], [0.0], [0.0]])
+s = NonLinPendulum_kETM_train_sat(W, b, 0.0)
+s.state = x0
 
-nsteps = 10000
+nsteps = 500
 
 states = []
 inputs = []

@@ -29,6 +29,7 @@ b = [b1, b2, b3, b4]
 
 # lmi = LMI_3l_int_ETM(W, b)
 lmi = LMI_3l_int_ETM_sat(W, b)
-alpha = lmi.search_alpha(0.2, 0, 1e-5, verbose=True)
+# alpha = lmi.search_alpha(0.2, 0, 1e-5, verbose=True)
+alpha = 1
 P, T, Z = lmi.solve(alpha, verbose=True)
-lmi.save_results('ETM')
+# lmi.save_results('ETM')
