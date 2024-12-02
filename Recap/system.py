@@ -196,13 +196,6 @@ class System():
     # Eta vales extraction
     etaval = self.eta.tolist()
     return self.state, u, e, etaval
-  
-  
-
-    
-
-    
-
 
 if __name__ == "__main__":
   import os
@@ -248,10 +241,30 @@ if __name__ == "__main__":
   
   s = System(W, b, bigX, 0.0)
 
-  x0 = np.array([[np.pi/6], [0.5], [0.0]])
-  s.state = x0
+  P = np.load('finsler/P.npy')
 
-  nsteps = 1000
+  print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
+
+  ref_bound = 5 * np.pi / 180
+  in_ellip = False
+  while not in_ellip:
+    theta = np.random.uniform(-np.pi/2, np.pi/2)
+    vtheta = np.random.uniform(-s.max_speed, s.max_speed)
+    x0 = np.array([[theta], [vtheta], [0.0]])
+    if (x0).T @ P @ (x0) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
+      in_ellip = True
+      ref = np.random.uniform(-ref_bound, ref_bound)
+      s = System(W, b, bigX, ref)
+      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+      s.state = x0
+  
+  # eta0 = x0.T @ P @ x0 - 1
+  # s.eta = np.ones(s.nlayers) * eta0
+
+  # x0 = np.array([[np.pi/6], [0.5], [0.0]])
+  # s.state = x0
+
+  nsteps = 300
 
   states = []
   inputs = []
@@ -265,7 +278,7 @@ if __name__ == "__main__":
     inputs.append(u)
     events.append(e)
     etas.append(eta)
-    # lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2])
+    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
 
   states = np.insert(states, 0, x0, axis=0)
   states = np.delete(states, -1, axis=0)
@@ -280,11 +293,11 @@ if __name__ == "__main__":
   events = np.squeeze(np.array(events))
   etas = np.squeeze(np.array(etas))
   lyap = np.squeeze(np.array(lyap))
-  # lyap_diff = np.diff(lyap)
-  # if np.all(lyap_diff <= 0):
-  #   print("Lyapunov function is always decreasing.")
-  # else:
-  #   print("Lyapunov function is not always decreasing.")
+  lyap_diff = np.diff(lyap)
+  if np.all(lyap_diff <= 0):
+    print("Lyapunov function is always decreasing.")
+  else:
+    print("Lyapunov function is not always decreasing.")
 
   timegrid = np.arange(0, nsteps)
 
@@ -352,22 +365,22 @@ if __name__ == "__main__":
   plt.grid(True)
   plt.show()
 
-  # plt.plot(timegrid, lyap, label='Lyapunov function')
-  # plt.legend()
-  # plt.grid(True)
-  # plt.show()
+  plt.plot(timegrid, lyap, label='Lyapunov function')
+  plt.legend()
+  plt.grid(True)
+  plt.show()
 
-  # from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
-  # from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
+  from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
+  from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
 
-  # fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
-  # ax.plot(states[:, 0], states[:, 1], states[:, 2], 'b')
-  # ax.plot(s.xstar[0], s.xstar[1], s.xstar[2], marker='o', markersize=5, color='r')
-  # plt.legend()
-  # plt.show()
+  fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
+  ax.plot(states[:, 0], states[:, 1], states[:, 2], 'b')
+  ax.plot(s.xstar[0], s.xstar[1], s.xstar[2], marker='o', markersize=5, color='r')
+  plt.legend()
+  plt.show()
 
-  # fig, ax = ellipsoid_plot_2D(P[:2, :2], False, color='b', legend='ROA with dynamic ETM')
-  # ax.plot(states[:, 0], states[:, 1], 'b')
-  # ax.plot(s.xstar[0], s.xstar[1], marker='o', markersize=5, color='r')
-  # plt.legend()
-  # plt.show()
+  fig, ax = ellipsoid_plot_2D(P[:2, :2], False, color='b', legend='ROA with dynamic ETM')
+  ax.plot(states[:, 0], states[:, 1], 'b')
+  ax.plot(s.xstar[0], s.xstar[1], marker='o', markersize=5, color='r')
+  plt.legend()
+  plt.show()

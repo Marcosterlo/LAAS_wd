@@ -190,6 +190,18 @@ class LMI():
 
     self.M += self.Rnu.T @ (self.R1.T @ (self.gamma1_scal * (self.bigX1 + self.bigX1.T)) @ self.R1 + self.R2.T @ (self.gamma2_scal * (self.bigX2 + self.bigX2.T)) @ self.R2 + self.R3.T @ (self.gamma3_scal * (self.bigX3 + self.bigX3.T)) @ self.R3 + self.Rsat.T @ (self.gamma4_scal * (self.bigX4 + self.bigX4.T)) @ self.Rsat) @ self.Rnu
 
+    R = cp.Variable(self.nphi)
+    L = cp.Variable(self.nphi)
+    self.R = cp.diag(R)
+    self.L = cp.diag(L)
+    self.id = np.eye(self.nphi)
+    self.new_sec = self.R + self.L - self.id
+
+    self.newM = cp.bmat([
+      [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
+      [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec]
+    ])
+
     # Finsler constraint to handle nu with respect to x and psi
     self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
 
@@ -204,29 +216,17 @@ class LMI():
    
     self.m_thres = 1e-6
 
-    # R = cp.Variable(self.nphi)
-    # L = cp.Variable(self.nphi)
-    # self.R = cp.diag(R)
-    # self.L = cp.diag(L)
-    # self.id = np.eye(self.nphi)
-    # self.new_sec = self.R + self.L - self.id
-
-    # self.newM = cp.bmat([
-    #   [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
-    #   [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec + self.new_sec.T]
-    # ])
-
     # Constraint definition 
     self.constraints = [self.P >> 0]
     self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
-    self.constraints += [self.finsler1 << 0]
-    self.constraints += [self.finsler2 << 0]
-    self.constraints += [self.finsler3 << 0]
-    self.constraints += [self.finsler4 << 0]
     # self.constraints += [self.newM << -self.m_thres * np.eye(self.newM.shape[0])]
     # self.constraints += [self.R >> 0]
     # self.constraints += [self.L >> 0]
     # self.constraints += [self.new_sec << 0]
+    self.constraints += [self.finsler1 << 0]
+    self.constraints += [self.finsler2 << 0]
+    self.constraints += [self.finsler3 << 0]
+    self.constraints += [self.finsler4 << 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
