@@ -35,10 +35,10 @@ class LMI_3l_int():
     self.gamma1_scal = self.gammas[0]
     self.gamma2_scal = self.gammas[1]
     self.gamma3_scal = self.gammas[2]
-    self.gamma4_scal = self.gammas[3]
+    self.gamma4_scal = -1.0
     self.nbigx = self.nx + self.neurons[0] * 2
     self.dynamic = True
-    self.xETM = True
+    self.xETM = False
     
     # Constraint related parameters
     self.m_thresh = 1e-6
@@ -60,6 +60,7 @@ class LMI_3l_int():
     self.Z1 = self.Z[:self.neurons[0], :]
     self.Z2 = self.Z[self.neurons[0]:self.neurons[0] + self.neurons[1], :]
     self.Z3 = self.Z[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2], :]
+    self.Z_sat = cp.reshape(self.Z[-1, :], (self.nu, self.nx))
     
     # New ETM matrices
     self.bigX1 = cp.Variable((self.nbigx, self.nbigx))
@@ -84,7 +85,6 @@ class LMI_3l_int():
     N33 = cp.Variable(self.nphi)
     self.N33 = cp.diag(N33)
     self.N3 = cp.vstack([self.N31, self.N32, self.N33])
-    self.Z_sat = cp.reshape(self.Z[-1, :], (self.nu, self.nx))
     
     # Parameters definition
     self.alpha = cp.Parameter(nonneg=True)
@@ -381,6 +381,8 @@ if __name__ == "__main__":
       print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
       s.state = x0
   
+  if not lmi.dynamic:
+    s.rho *= 0.0 
   
   s.bigX = [Omega1, Omega2, Omega3]
   
