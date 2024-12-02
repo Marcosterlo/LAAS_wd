@@ -37,7 +37,7 @@ class LMI_final():
     self.gamma2_scal = self.gammas[1]
     self.gamma3_scal = self.gammas[2]
     self.nbigx = self.nx + self.neurons[0] * 2
-    self.xETM = True
+    self.xETM = False
 
     # Variables definition
     self.P = cp.Variable((self.nx, self.nx), symmetric=True)
@@ -192,7 +192,7 @@ class LMI_final():
 
     self.M3 = self.Rphi.T @ self.Sinsec @ self.Rphi
 
-    self.M4 = self.Rs.T @ self.Omegas @ self.Rs
+    self.M4 = self.Rs.T @ (self.Omegas + self.Omegas.T) @ self.Rs
 
     self.M = self.M1 + self.M2 + self.M3 - self.M4
 
