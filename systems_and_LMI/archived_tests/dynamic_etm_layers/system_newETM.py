@@ -16,8 +16,8 @@ class Better_System(System):
     
     T_mat_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
     Z_mat_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
-    # bigX1_name = os.path.abspath(__file__ + "/../Test/bigX1.npy")
-    # bigX2_name = os.path.abspath(__file__ + "/../Test/bigX2.npy")
+    # bigX1_name = os.path.abspath(__file__ + "/../test_new_inclusion/bigX1.npy")
+    # bigX2_name = os.path.abspath(__file__ + "/../test_new_inclusion/bigX2.npy")
     bigX1_name = os.path.abspath(__file__ + "/../new/bigX1.npy")
     bigX2_name = os.path.abspath(__file__ + "/../new/bigX2.npy")
 
@@ -105,10 +105,13 @@ if __name__ == "__main__":
   s = Better_System()
 
   if xETM:
+    # P = np.load('test_new_inclusion/P.npy')
     P = np.load('new/P.npy')
     # P = np.load('Test/P.npy')
   else:
     P = np.load('mat-weights/P_try.npy')
+
+  print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
   nsteps = 500
   in_ellip = False

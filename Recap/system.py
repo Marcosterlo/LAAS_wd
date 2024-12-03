@@ -116,6 +116,8 @@ class System():
     self.eta = np.ones(self.nlayers)*params.eta0
     self.rho = params.rhos
     self.lam = params.lambdas
+    self.gammas = -params.gammas
+    # self.gammas = np.ones(self.nlayers) * (2.0)
 
     # Last output of the neural network for each layer, initialized to arbitrary high value to trigger an event on initialization
     self.last_w = []
@@ -159,7 +161,7 @@ class System():
       nutilde = nu - self.wstar[l]
       vec = np.vstack([xtilde, psitilde, nutilde])
       mat = self.bigX[l]
-      lht = (vec.T @ mat @ vec)[0][0]
+      lht = self.gammas[l] * (vec.T @ mat @ vec)[0][0]
 
       event = lht > rht
 
@@ -170,7 +172,7 @@ class System():
         e[l] = 1
         psitilde = nu - omega
         vec = np.vstack([xtilde, psitilde, nutilde])
-        lht = (vec.T @ mat @ vec)[0][0]
+        lht = self.gammas[l] * (vec.T @ mat @ vec)[0][0]
         val[l] = lht
       
       # If no event is triggered, store the last output of the layer as the current output
@@ -250,10 +252,12 @@ if __name__ == "__main__":
   while not in_ellip:
     theta = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
+    # theta = 1*np.pi/180
+    # vtheta = 1.0
     x0 = np.array([[theta], [vtheta], [0.0]])
-    if (x0).T @ P @ (x0) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
+    if (x0).T @ P @ (x0) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
       in_ellip = True
-      ref = np.random.uniform(-ref_bound, ref_bound)
+      ref = np.random.uniform(-ref_bound, ref_bound)*0
       s = System(W, b, bigX, ref)
       print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
       s.state = x0

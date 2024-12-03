@@ -34,18 +34,6 @@ class LMI_Finsler():
     self.gamma2_scal = self.gammas[1]
     self.nbigx = self.nx + self.neurons[0] * 2
 
-    # Old results import
-    # T_name = os.path.abspath(__file__ + "/../mat-weights/T_try.npy")
-    # Z_name = os.path.abspath(__file__ + "/../mat-weights/Z_try.npy")
-    # T_old = np.load(T_name)
-    # Z_old = np.load(Z_name)
-    # Z1_old = Z_old[:self.neurons[0], :]
-    # Z2_old = Z_old[self.neurons[0]:, :]
-    # T1_old = T_old[:self.neurons[0], :self.neurons[0]]
-    # T2_old = T_old[self.neurons[0]:, self.neurons[0]:]
-    # self.T_old = T_old
-    # self.Z_old = Z_old
-    
     # Constraint related parameters
     self.m_thresh = 1e-6
     
@@ -155,17 +143,34 @@ class LMI_Finsler():
     self.constraints += [self.rho >= 0]
     self.constraints += [self.M + self.rho * np.eye(self.M.shape[0]) >> 0]
 
-    # Ellipsoid conditions for activation functions
+    self.F = cp.Variable(self.nphi)
+    self.theta = cp.Variable(self.nphi)
+    
     for i in range(self.nlayers - 1):
       for k in range(self.neurons[i]):
         Z_el = self.Z[i*self.neurons[i] + k]
-        T_el = self.T[i*self.neurons[i] + k, i*self.neurons[i] + k]
+        F_el = cp.reshape(self.F[i*self.neurons[i] + k], (1, 1))
+        theta_el = cp.reshape(self.theta[i*self.neurons[i] + k], (1, 1))
         vcap = np.min([np.abs(-self.bound - self.wstar[i][k][0]), np.abs(self.bound - self.wstar[i][k][0])], axis=0)
         ellip = cp.bmat([
-            [self.P, cp.reshape(Z_el, (self.nx ,1))],
-            [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
+          [self.P, cp.reshape(Z_el, (self.nx ,1)), np.zeros((self.nx, 1))],
+          [cp.reshape(Z_el, (1, self.nx)), 2 * theta_el * vcap, -F_el + vcap * theta_el],
+          [np.zeros((1, self.nx)), -F_el + vcap * theta_el, 1 - 2*F_el]
         ])
         self.constraints += [ellip >> 0]
+
+
+    # # Ellipsoid conditions for activation functions
+    # for i in range(self.nlayers - 1):
+    #   for k in range(self.neurons[i]):
+    #     Z_el = self.Z[i*self.neurons[i] + k]
+    #     T_el = self.T[i*self.neurons[i] + k, i*self.neurons[i] + k]
+    #     vcap = np.min([np.abs(-self.bound - self.wstar[i][k][0]), np.abs(self.bound - self.wstar[i][k][0])], axis=0)
+    #     ellip = cp.bmat([
+    #         [self.P, cp.reshape(Z_el, (self.nx ,1))],
+    #         [cp.reshape(Z_el, (1, self.nx)), cp.reshape(2*self.alpha*T_el - self.alpha**2*vcap**(-2), (1, 1))] 
+    #     ])
+    #     self.constraints += [ellip >> 0]
     
     # Objective function definition
     self.objective = cp.Minimize(self.rho)

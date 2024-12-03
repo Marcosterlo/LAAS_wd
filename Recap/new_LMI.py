@@ -37,16 +37,29 @@ class LMI():
     self.nbigx3 = self.nx + self.neurons[2] * 2
     self.nbigx4 = self.nx + self.neurons[3] * 2
 
+    self.xETM = True
+
   
     # Variables definition
     # P matrix for Lyapunov function
     self.P = cp.Variable((self.nx, self.nx), symmetric=True)
 
     # ETM Parameters
-    self.gamma1_scal = params.gammas[0]
-    self.gamma2_scal = params.gammas[1]
-    self.gamma3_scal = params.gammas[2]
-    self.gamma4_scal = params.gammas[3]
+    # self.gamma1_scal = params.gammas[0]
+    # self.gamma2_scal = params.gammas[1]
+    # self.gamma3_scal = params.gammas[2]
+    # self.gamma4_scal = params.gammas[3]
+    self.gamma1_scal = -2.0
+    self.gamma2_scal = -2.0
+    self.gamma3_scal = -2.0
+    self.gamma4_scal = -2.0
+    self.gamma_vec = np.concatenate([
+      np.ones(self.neurons[0]) * self.gamma1_scal,
+      np.ones(self.neurons[1]) * self.gamma2_scal,
+      np.ones(self.neurons[2]) * self.gamma3_scal,
+      np.ones(self.neurons[3]) * self.gamma4_scal
+    ])
+    self.gamma_mat = np.diag(self.gamma_vec)
 
     # ETM Variables
     T_val = cp.Variable(self.nphi)
@@ -205,12 +218,12 @@ class LMI():
    
     self.m_thres = 1e-6
 
-    R = cp.Variable(self.nphi)
+    Rho = cp.Variable(self.nphi)
     L = cp.Variable(self.nphi)
-    self.R = cp.diag(R)
+    self.Rho = cp.diag(Rho)
     self.L = cp.diag(L)
     self.id = np.eye(self.nphi)
-    self.new_sec = self.R + self.L - self.id
+    self.new_sec = self.Rho + self.L - self.id
 
     self.newM = cp.bmat([
       [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
@@ -225,9 +238,15 @@ class LMI():
     self.constraints += [self.finsler3 << 0]
     self.constraints += [self.finsler4 << 0]
     self.constraints += [self.newM << -self.m_thres * np.eye(self.newM.shape[0])]
-    self.constraints += [self.R >> 0]
+    self.constraints += [self.Rho >> 0]
     self.constraints += [self.L >> 0]
     self.constraints += [self.new_sec << 0]
+
+    self.eps = cp.Variable((1, 1))
+    self.constraints += [self.eps >> 0]
+    self.constraints += [self.Rho + self.L -(1 - self.eps) * self.id >> 0]
+    self.constraints += [np.linalg.inv(self.gamma_mat) @ self.Rho - self.eps * self.id << 0]
+
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -251,8 +270,11 @@ class LMI():
     ])
     self.constraints += [ellip >> 0]
 
+    self.lambda1 = cp.Parameter(nonneg=True)
+
     # Objective function definition
-    self.objective = cp.Minimize(cp.trace(self.P))
+    # self.objective = cp.Minimize(cp.trace(self.P))
+    self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + (1 - self.lambda1) * self.eps)
 
     # Problem definition
     self.prob = cp.Problem(self.objective, self.constraints)
@@ -260,8 +282,9 @@ class LMI():
     # User warnings filter
     warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
 
-  def solve(self, alpha_val, verbose=False):
+  def solve(self, alpha_val, lambda_val, verbose=False):
     self.alpha.value = alpha_val
+    self.lambda1.value = lambda_val
     try:
       self.prob.solve(solver=cp.MOSEK, verbose=True)
     except cp.error.SolverError:
@@ -318,7 +341,7 @@ class LMI():
     np.save(f"{path_dir}/P.npy", self.P.value)
     np.save(f"{path_dir}/T.npy", self.T.value)
     np.save(f"{path_dir}/Z.npy", self.Z.value)
-    np.save(f"{path_dir}/R.npy", self.R.value)
+    np.save(f"{path_dir}/Rho.npy", self.R.value)
     np.save(f"{path_dir}/L.npy", self.L.value)
     np.save(f"{path_dir}/M.npy", self.M.value)
     np.save(f"{path_dir}/newM.npy", self.newM.value)
@@ -362,4 +385,4 @@ if __name__ == "__main__":
 
   lmi = LMI(W, b)
   alpha = 0.05
-  P, T, Z = lmi.solve(alpha, verbose=True)
+  # P, T, Z = lmi.solve(alpha, verbose=True)
