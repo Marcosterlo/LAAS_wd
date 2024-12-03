@@ -251,18 +251,12 @@ if __name__ == "__main__":
     theta = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
     x0 = np.array([[theta], [vtheta], [0.0]])
-    if (x0).T @ P @ (x0) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
+    if (x0).T @ P @ (x0) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
       in_ellip = True
       ref = np.random.uniform(-ref_bound, ref_bound)
       s = System(W, b, bigX, ref)
       print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
       s.state = x0
-  
-  # eta0 = x0.T @ P @ x0 - 1
-  # s.eta = np.ones(s.nlayers) * eta0
-
-  # x0 = np.array([[np.pi/6], [0.5], [0.0]])
-  # s.state = x0
 
   nsteps = 300
 

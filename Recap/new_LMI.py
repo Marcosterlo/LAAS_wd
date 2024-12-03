@@ -3,6 +3,7 @@ import params
 import numpy as np
 import cvxpy as cp
 import warnings
+import os
 
 class LMI():
   def __init__(self, W, b):
@@ -190,18 +191,6 @@ class LMI():
 
     self.M += self.Rnu.T @ (self.R1.T @ (self.gamma1_scal * (self.bigX1 + self.bigX1.T)) @ self.R1 + self.R2.T @ (self.gamma2_scal * (self.bigX2 + self.bigX2.T)) @ self.R2 + self.R3.T @ (self.gamma3_scal * (self.bigX3 + self.bigX3.T)) @ self.R3 + self.Rsat.T @ (self.gamma4_scal * (self.bigX4 + self.bigX4.T)) @ self.Rsat) @ self.Rnu
 
-    R = cp.Variable(self.nphi)
-    L = cp.Variable(self.nphi)
-    self.R = cp.diag(R)
-    self.L = cp.diag(L)
-    self.id = np.eye(self.nphi)
-    self.new_sec = self.R + self.L - self.id
-
-    self.newM = cp.bmat([
-      [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
-      [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec]
-    ])
-
     # Finsler constraint to handle nu with respect to x and psi
     self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
 
@@ -216,17 +205,29 @@ class LMI():
    
     self.m_thres = 1e-6
 
+    R = cp.Variable(self.nphi)
+    L = cp.Variable(self.nphi)
+    self.R = cp.diag(R)
+    self.L = cp.diag(L)
+    self.id = np.eye(self.nphi)
+    self.new_sec = self.R + self.L - self.id
+
+    self.newM = cp.bmat([
+      [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
+      [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec + self.new_sec.T]
+    ])
+
     # Constraint definition 
     self.constraints = [self.P >> 0]
-    self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
-    # self.constraints += [self.newM << -self.m_thres * np.eye(self.newM.shape[0])]
-    # self.constraints += [self.R >> 0]
-    # self.constraints += [self.L >> 0]
-    # self.constraints += [self.new_sec << 0]
+    # self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
     self.constraints += [self.finsler1 << 0]
     self.constraints += [self.finsler2 << 0]
     self.constraints += [self.finsler3 << 0]
     self.constraints += [self.finsler4 << 0]
+    self.constraints += [self.newM << -self.m_thres * np.eye(self.newM.shape[0])]
+    self.constraints += [self.R >> 0]
+    self.constraints += [self.L >> 0]
+    self.constraints += [self.new_sec << 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -275,6 +276,7 @@ class LMI():
       return self.P.value, self.T.value, self.Z.value
   
   def search_alpha(self, feasible_extreme, infeasible_extreme, threshold, verbose=False):
+
     golden_ratio = (1 + np.sqrt(5)) / 2
     i = 0
     while (feasible_extreme - infeasible_extreme > threshold) and i < 11:
@@ -310,10 +312,29 @@ class LMI():
     
     return feasible_extreme
 
-
+  def save_results(self, path_dir: str):
+    if not os.path.exists(path_dir):
+      os.makedirs(path_dir)
+    np.save(f"{path_dir}/P.npy", self.P.value)
+    np.save(f"{path_dir}/T.npy", self.T.value)
+    np.save(f"{path_dir}/Z.npy", self.Z.value)
+    np.save(f"{path_dir}/R.npy", self.R.value)
+    np.save(f"{path_dir}/L.npy", self.L.value)
+    np.save(f"{path_dir}/M.npy", self.M.value)
+    np.save(f"{path_dir}/newM.npy", self.newM.value)
+    if self.xETM:
+      np.save(f"{path_dir}/bigX1.npy", self.bigX1.value)
+      np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
+      np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
+      np.save(f"{path_dir}/bigX4.npy", self.bigX4.value)
+    else:
+      np.save(f"{path_dir}/Omega1.npy", self.Omega1.value)
+      np.save(f"{path_dir}/Omega2.npy", self.Omega2.value)
+      np.save(f"{path_dir}/Omega3.npy", self.Omega3.value)
+      np.save(f"{path_dir}/Omegas.npy", self.Omegas.value)
+      
+    
 if __name__ == "__main__":
-  import os
-
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
   W2_name = os.path.abspath(__file__ + "/../weights/W2.csv")
   W3_name = os.path.abspath(__file__ + "/../weights/W3.csv")
