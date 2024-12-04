@@ -141,15 +141,16 @@ class System():
 
     # Iteration for each layer
     for l in range(self.nlayers):
-      # Particular case for the first layer since the input is the state
-      
-      # Fake omega for fist layer
 
+      # Particular case for the first layer since the input is the state
       if l == 0:
         input = torch.tensor(x)
       else:
         if omega is None:
+        # fake omega for code robustness
           omega = np.zeros((1, self.W[l].shape[1]))
+        
+        # The input is the output of the previous layer
         input = torch.tensor(omega.reshape(1, self.W[l].shape[1]))
       
       # Forward pass without activation function
@@ -205,6 +206,7 @@ class System():
 if __name__ == "__main__":
   import os
 
+  # Weights and biases import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
   W2_name = os.path.abspath(__file__ + "/../weights/W2.csv")
   W3_name = os.path.abspath(__file__ + "/../weights/W3.csv")
@@ -230,6 +232,7 @@ if __name__ == "__main__":
   
   b = [b1, b2, b3, b4]
 
+  # Old ETM matrices import
   Omega1 = np.load('omega_dynamic/Omega1.npy')
   Omega2 = np.load('omega_dynamic/Omega2.npy')
   Omega3 = np.load('omega_dynamic/Omega3.npy')
@@ -237,80 +240,126 @@ if __name__ == "__main__":
 
   Omega = [Omega1, Omega2, Omega3, Omegas]
 
+  # New ETM matrices import
   bigX1 = np.load('finsler/bigX1.npy')
   bigX2 = np.load('finsler/bigX2.npy')
   bigX3 = np.load('finsler/bigX3.npy')
   bigX4 = np.load('finsler/bigX4.npy')
 
   bigX = [bigX1, bigX2, bigX3, bigX4]
-  
-  s = System(W, b, bigX, 0.0)
 
+  # System initialization
+  s = System(W, b, bigX, 0.0)
+  
+  # P matrix import for lyapunov function
   P = np.load('finsler/P.npy')
 
   print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
+  # Maximum disturbance bound on the position theta in degrees
   ref_bound = 5 * np.pi / 180
+
+  # Flag to check if the initial state is inside the ellipsoid
   in_ellip = False
+
+  # Loop to find a random initial state inside the ellipsoid
   while not in_ellip:
+    # Random initial state and disturbance
     theta = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
     ref = np.random.uniform(-ref_bound, ref_bound)
-    # theta = 1*np.pi/180
-    # vtheta = 1.0
-    # ref = 0.0
+
+    # Initial state definition and system initialization
     x0 = np.array([[theta], [vtheta], [0.0]])
     s = System(W, b, bigX, ref)
+
+    # Check if the initial state is inside the ellipsoid
     if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
+      # Initial eta0 computation with respect to the initial state
       eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
+      
+      # Flag variable update to stop the search
       in_ellip = True
+      
+      # Initial eta0 value update in the system
       s.eta = np.ones(s.nlayers) * eta0
-      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
-      print(f"Initial eta0: {eta0:.2f}")
+      
+      # Initial state update in the system
       s.state = x0
 
+      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+      print(f"Initial eta0: {eta0:.2f}")
+
+  # Simulation loop
+  
+  # Empty lists to store the values of the simulation
   states = []
   inputs = []
   events = []
   etas = []
   lyap = []
 
+  # Flag to stop the simulation
   stop_run = False
+
+  # Counter of the number of steps
   nsteps = 0
+
+  # Magnitude of the Lyapunov function to stop the simulation
   lyap_magnitude = 1e-6
 
+  # Simulation loop
   while not stop_run:
+    # Counter update
     nsteps += 1
+
+    # Step computation
     state, u, e, eta = s.step()
+
+    # Values storage
     states.append(state)
     inputs.append(u)
     events.append(e)
     etas.append(eta)
     lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
+    
+    # Stop condition
     if lyap[-1] < lyap_magnitude:
       stop_run = True
 
+  # Data processing
+  
+  # Initial state added manually to the states list
   states = np.insert(states, 0, x0, axis=0)
+  # Last state removed to have the same size as the other lists
   states = np.delete(states, -1, axis=0)
+  # First state component converted to degrees
   states = np.squeeze(np.array(states))
   states[:, 0] *= 180 / np.pi
   s.xstar[0] *= 180 / np.pi
 
+  # Initial input added manually to the inputs list, set to 0
   inputs = np.insert(inputs, 0, np.array(0.0), axis=0)
+  # Last input removed to have the same size as the other lists
   inputs = np.delete(inputs, -1, axis=0)
+  # Inputs multiplied by the maximum torque to have the real value
   inputs = np.squeeze(np.array(inputs)) * s.max_torque
 
   events = np.squeeze(np.array(events))
   etas = np.squeeze(np.array(etas))
   lyap = np.squeeze(np.array(lyap))
+
+  # Check of decrement of the Lyapunov function
   lyap_diff = np.diff(lyap)
   if np.all(lyap_diff <= 1e-25):
     print("Lyapunov function is always decreasing.")
   else:
     print("Lyapunov function is not always decreasing.")
 
+  # Data visualization
   timegrid = np.arange(0, nsteps)
 
+  # Triggering percentage computation
   layer1_trigger = np.sum(events[:, 0]) / nsteps * 100
   layer2_trigger = np.sum(events[:, 1]) / nsteps * 100
   layer3_trigger = np.sum(events[:, 2]) / nsteps * 100
@@ -321,6 +370,7 @@ if __name__ == "__main__":
   print(f"Layer 3 has been triggered {layer3_trigger:.1f}% of times")
   print(f"Output layer has been triggered {layer4_trigger:.1f}% of times")
 
+  # Replace every non event value from 0 to None for ease of plotting
   for i, event in enumerate(events):
     if not event[0]:
       events[i][0] = None
@@ -333,33 +383,41 @@ if __name__ == "__main__":
       
   import matplotlib.pyplot as plt
 
+  # Control input plot
   fig, axs = plt.subplots(4, 1)
   axs[0].plot(timegrid, inputs, label='Control input')
   axs[0].plot(timegrid, inputs * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # Ustar plot
   axs[0].plot(timegrid, np.squeeze(timegrid * 0 + s.ustar * s.max_torque), 'r--')
   axs[0].set_xlabel('Time steps')
   axs[0].set_ylabel('Values')
   axs[0].legend()
   axs[0].grid(True)
 
+  # Theta plot
   axs[1].plot(timegrid, states[:, 0], label='Position')
   axs[1].plot(timegrid, states[:, 0] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # Theta star plot
   axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
   axs[1].set_xlabel('Time steps')
   axs[1].set_ylabel('Values')
   axs[1].legend()
   axs[1].grid(True)
 
+  # V plot
   axs[2].plot(timegrid, states[:, 1], label='Velocity')
   axs[2].plot(timegrid, states[:, 1] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # V star plot
   axs[2].plot(timegrid, timegrid * 0 + s.xstar[1], 'r--')
   axs[2].set_xlabel('Time steps')
   axs[2].set_ylabel('Values')
   axs[2].legend()
   axs[2].grid(True)
 
+  # Integrator state plot
   axs[3].plot(timegrid, states[:, 2], label='Integrator state')
   axs[3].plot(timegrid, states[:, 2] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # Integrator state star plot
   axs[3].plot(timegrid, timegrid * 0 + s.xstar[2], 'r--')
   axs[3].set_xlabel('Time steps')
   axs[3].set_ylabel('Values')
@@ -367,6 +425,7 @@ if __name__ == "__main__":
   axs[3].grid(True)
   plt.show()
 
+  # Eta plots
   plt.plot(timegrid, etas[:, 0], label='Eta_1')
   plt.plot(timegrid, etas[:, 1], label='Eta_2')
   plt.plot(timegrid, etas[:, 2], label='Eta_3')
@@ -375,6 +434,7 @@ if __name__ == "__main__":
   plt.grid(True)
   plt.show()
 
+  # Lyapunov function plot
   plt.plot(timegrid, lyap, label='Lyapunov function')
   plt.legend()
   plt.grid(True)
@@ -383,14 +443,16 @@ if __name__ == "__main__":
   from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
   from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
 
+  # 3D ROA plot
   fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1] - s.xstar[1], states[:, 2] - s.xstar[2], 'b')
-  ax.plot(s.xstar[0]*0, s.xstar[1]*0, s.xstar[2]*0, marker='o', markersize=5, color='r')
+  ax.plot(0, 0, 0, marker='o', markersize=5, color='r')
   plt.legend()
   plt.show()
 
+  # 2D projection on integrator state star plane of R
   fig, ax = ellipsoid_plot_2D(P[:2, :2], False, color='b', legend='ROA with dynamic ETM')
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], 'b')
-  ax.plot(s.xstar[0]*0, s.xstar[1]*0, marker='o', markersize=5, color='r')
+  ax.plot(0, 0, marker='o', markersize=5, color='r')
   plt.legend()
   plt.show()
