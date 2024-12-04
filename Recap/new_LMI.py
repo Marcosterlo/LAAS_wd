@@ -31,35 +31,43 @@ class LMI():
     self.nlayers = self.system.nlayers
     self.wstar = self.system.wstar
     self.ustar = self.system.ustar
-    self.bound = 1
+    self.bound = self.system.bound
     self.nbigx1 = self.nx + self.neurons[0] * 2
     self.nbigx2 = self.nx + self.neurons[1] * 2
     self.nbigx3 = self.nx + self.neurons[2] * 2
     self.nbigx4 = self.nx + self.neurons[3] * 2
+    
+    # Sign definition of Delta V parameter
+    self.m_thres = 1e-6
 
-    self.xETM = True
-
-  
-    # Variables definition
-    # P matrix for Lyapunov function
-    self.P = cp.Variable((self.nx, self.nx), symmetric=True)
+    # Sign definition of epsilon parameter
+    self.eps_thresh = 1e-6
 
     # ETM Parameters
-    # self.gamma1_scal = params.gammas[0]
-    # self.gamma2_scal = params.gammas[1]
-    # self.gamma3_scal = params.gammas[2]
-    # self.gamma4_scal = params.gammas[3]
-    self.gamma1_scal = -2.0
-    self.gamma2_scal = -2.0
-    self.gamma3_scal = -2.0
-    self.gamma4_scal = -2.0
-    self.gamma_vec = np.concatenate([
-      np.ones(self.neurons[0]) * self.gamma1_scal,
-      np.ones(self.neurons[1]) * self.gamma2_scal,
-      np.ones(self.neurons[2]) * self.gamma3_scal,
-      np.ones(self.neurons[3]) * self.gamma4_scal
-    ])
-    self.gamma_mat = np.diag(self.gamma_vec)
+    self.gamma_scal = params.gamma
+
+    # Parameters definition
+    self.alpha = cp.Parameter(nonneg=True)
+    self.lambda1 = cp.Parameter(nonneg=True)
+
+    # Auxiliary matrices
+    self.Abar = self.A + self.B @ self.Rw
+    self.Bbar = -self.B @ self.Nuw @ self.R
+
+    # Function that handles all Variables declarations
+    self.init_variables()
+
+    # Function that handles all Constraints declarations
+    self.init_constraints()
+
+    # Function that handles final problem definition
+    self.create_problem()
+  
+  # Function that handles all Variables declarations
+  def init_variables(self):
+
+    # P matrix for Lyapunov function
+    self.P = cp.Variable((self.nx, self.nx), symmetric=True)
 
     # ETM Variables
     T_val = cp.Variable(self.nphi)
@@ -75,103 +83,7 @@ class LMI():
     self.Z3 = self.Z[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2], :]
     self.Z_sat = cp.reshape(self.Z[-1, :], (self.nu, self.nx))
 
-    # Parameters definition
-    self.alpha = cp.Parameter(nonneg=True)
-
-    # Auxiliary matrices
-    self.Abar = self.A + self.B @ self.Rw
-    self.Bbar = -self.B @ self.Nuw @ self.R
-
-    # Constraints matrices
-    # Sin non-linearity sector condition
-    self.Sinsec = cp.bmat([
-      [0.0, -1.0],
-      [-1.0, -2.0]
-    ])
-    self.Rsin = cp.bmat([
-      [np.array([[1.0, 0.0, 0.0]]), np.zeros((1, self.nphi)), np.zeros((1, self.nq))],
-      [np.zeros((self.nq, self.nx)), np.zeros((1, self.nphi)), np.eye(self.nq)]
-    ])
-
-    self.M = cp.bmat([
-      [self.Abar.T @ self.P @ self.Abar - self.P, self.Abar.T @ self.P @ self.Bbar, self.Abar.T @ self.P @ self.C],
-      [self.Bbar.T @ self.P @ self.Abar, self.Bbar.T @ self.P @ self.Bbar, self.Bbar.T @ self.P @ self.C],
-      [self.C.T @ self.P @ self.Abar, self.C.T @ self.P @ self.Bbar, self.C.T @ self.P @ self.C]
-    ]) + self.Rsin.T @ self.Sinsec @ self.Rsin
-
-    # ETM constraints
-    idx = np.eye(self.nx)
-    xzero = np.zeros((self.nx, self.neurons[0]))
-    xzeros = np.zeros((self.nx, self.nu))
-
-    id = np.eye(self.neurons[0])
-    zero = np.zeros((self.neurons[0], self.neurons[0]))
-    zerox = np.zeros((self.neurons[0], self.nx))
-    zeros = np.zeros((self.neurons[0], self.nu))
-
-    ids = np.eye(self.nu)
-    szerox = np.zeros((self.nu, self.nx))
-    szero = np.zeros((self.nu, self.neurons[0]))
-    szeros = np.zeros((self.nu, self.nu))
-
-    self.R1 = cp.bmat([
-      [idx, xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
-      [zerox, id, zero, zero, zeros, zero, zero, zero, zeros],
-      [zerox, zero, zero, zero, zeros, id, zero, zero, zeros],
-    ])
-
-    self.R2 = cp.bmat([
-      [idx, xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
-      [zerox, zero, id, zero, zeros, zero, zero, zero, zeros],
-      [zerox, zero, zero, zero, zeros, zero, id, zero, zeros],
-    ])
-
-    self.R3 = cp.bmat([
-      [idx, xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
-      [zerox, zero, zero, id, zeros, zero, zero, zero, zeros],
-      [zerox, zero, zero, zero, zeros, zero, zero, id, zeros],
-    ])
-
-    self.Rsat = cp.bmat([
-      [idx, xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
-      [szerox, szero, szero, szero, ids, szero, szero, szero, szeros],
-      [szerox, szero, szero, szero, szeros, szero, szero, szero, ids]
-    ])
-
-    self.Rnu = cp.bmat([
-      [np.eye(self.nx), np.zeros((self.nx, self.nphi)), np.zeros((self.nx, self.nq))],
-      [np.zeros((self.nphi, self.nx)), np.eye(self.nphi), np.zeros((self.nphi, self.nq))],
-      [self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, np.zeros((self.nphi, self.nq))],
-    ])
-
-    self.Omega1 = cp.bmat([
-      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[0])), np.zeros((self.nx, self.neurons[0]))],
-      [self.Z1, self.T1, -self.T1],
-      [np.zeros((self.neurons[0], self.nx)), np.zeros((self.neurons[0], self.neurons[0])), np.zeros((self.neurons[0], self.neurons[0]))]
-    ])
-    
-    self.Omega2 = cp.bmat([
-      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[1])), np.zeros((self.nx, self.neurons[1]))],
-      [self.Z2, self.T2, -self.T2],
-      [np.zeros((self.neurons[1], self.nx)), np.zeros((self.neurons[1], self.neurons[1])), np.zeros((self.neurons[1], self.neurons[1]))]
-    ])
-    
-    self.Omega3 = cp.bmat([
-      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[2])), np.zeros((self.nx, self.neurons[2]))],
-      [self.Z3, self.T3, -self.T3],
-      [np.zeros((self.neurons[2], self.nx)), np.zeros((self.neurons[2], self.neurons[2])), np.zeros((self.neurons[2], self.neurons[2]))]
-    ])
-
-    self.Omegas = cp.bmat([
-      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.nu)), np.zeros((self.nx, self.nu))],
-      [self.Z_sat, self.T_sat, -self.T_sat],
-      [np.zeros((self.nu, self.nx)), np.zeros((self.nu, self.nu)), np.zeros((self.nu, self.nu))]
-    ])
-
-    # self.M += self.Rnu.T @ (self.R1.T @ (self.gamma1_scal * (self.Omega1 + self.Omega1.T)) @ self.R1 + self.R2.T @ (self.gamma2_scal * (self.Omega2 + self.Omega2.T)) @ self.R2 + self.R3.T @ (self.gamma3_scal * (self.Omega3 + self.Omega3.T)) @ self.R3 + self.Rsat.T @ (self.gamma4_scal *(self.Omegas + self.Omegas.T)) @ self.Rsat) @ self.Rnu
-
-    # Finsler application
-    # Finsler multipliers
+    # Finsler multipliers, structured to reduce computational burden and different for each layer
     self.N11 = cp.Variable((self.nx, self.nphi))
     self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
     N13 = cp.Variable(self.nphi)
@@ -201,13 +113,120 @@ class LMI():
     self.bigX2 = cp.Variable((self.nbigx2, self.nbigx2))
     self.bigX3 = cp.Variable((self.nbigx3, self.nbigx3))
     self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
+    
+    # Eta dynamics variables
+    self.eps = cp.Variable((1, 1), nonneg=True)
+    Rho = cp.Variable(self.nphi)
+    self.Rho = cp.diag(Rho)
+  
+  # Function that handles all Constraints declarations
+  def init_constraints(self):
 
-    self.M += self.Rnu.T @ (self.R1.T @ (self.gamma1_scal * (self.bigX1 + self.bigX1.T)) @ self.R1 + self.R2.T @ (self.gamma2_scal * (self.bigX2 + self.bigX2.T)) @ self.R2 + self.R3.T @ (self.gamma3_scal * (self.bigX3 + self.bigX3.T)) @ self.R3 + self.Rsat.T @ (self.gamma4_scal * (self.bigX4 + self.bigX4.T)) @ self.Rsat) @ self.Rnu
+    # Sin non-linearity sector condition
+    self.Sinsec = cp.bmat([
+      [0.0, -1.0],
+      [-1.0, -2.0]
+    ])
+    # Transformation matrix to go from [x, phi] = [x, sin(x) - x] to [x, psi, phi]
+    self.Rsin = cp.bmat([
+      [np.array([[1.0, 0.0, 0.0]]), np.zeros((1, self.nphi)), np.zeros((1, self.nq))],
+      [np.zeros((self.nq, self.nx)), np.zeros((1, self.nphi)), np.eye(self.nq)]
+    ])
 
-    # Finsler constraint to handle nu with respect to x and psi
+    # Delta V matrix formulation with non-linearity sector condition, beign positive definite in -pi, pi it's added as a positive term
+    self.M = cp.bmat([
+      [self.Abar.T @ self.P @ self.Abar - self.P,     self.Abar.T @ self.P @ self.Bbar,     self.Abar.T @ self.P @ self.C],
+      [self.Bbar.T @ self.P @ self.Abar,              self.Bbar.T @ self.P @ self.Bbar,     self.Bbar.T @ self.P @ self.C],
+      [self.C.T @ self.P @ self.Abar,                 self.C.T @ self.P @ self.Bbar,        self.C.T @ self.P @ self.C]
+    ]) + self.Rsin.T @ self.Sinsec @ self.Rsin
+
+    # ETM constraints
+
+    # Useful declarations for zeros and identities of the correct shapes
+    idx = np.eye(self.nx)
+    xzero = np.zeros((self.nx, self.neurons[0]))
+    xzeros = np.zeros((self.nx, self.nu))
+
+    id = np.eye(self.neurons[0])
+    zero = np.zeros((self.neurons[0], self.neurons[0]))
+    zerox = np.zeros((self.neurons[0], self.nx))
+    zeros = np.zeros((self.neurons[0], self.nu))
+
+    ids = np.eye(self.nu)
+    szerox = np.zeros((self.nu, self.nx))
+    szero = np.zeros((self.nu, self.neurons[0]))
+    szeros = np.zeros((self.nu, self.nu))
+
+    # Transformation matrix to go from [x, psi_1, nu_1] to [x, psi_1, psi_2, psi_3, psi_4, nu_1, nu_2, nu_3, nu_4] = [x, psi, nu]
+    self.R1 = cp.bmat([
+      [idx,   xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
+      [zerox, id,    zero,  zero,  zeros, zero,   zero,  zero,  zeros],
+      [zerox, zero,  zero,  zero,  zeros, id,     zero,  zero,  zeros],
+    ])
+
+    # Transformation matrix to go from [x, psi_2, nu_2] to [x, psi_1, psi_2, psi_3, psi_4, nu_1, nu_2, nu_3, nu_4] = [x, psi, nu]
+    self.R2 = cp.bmat([
+      [idx,   xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
+      [zerox, zero,  id,    zero,  zeros,  zero,  zero,  zero,  zeros],
+      [zerox, zero,  zero,  zero,  zeros,  zero,  id,    zero,  zeros],
+    ])
+
+    # Transformation matrix to go from [x, psi_3, nu_3] to [x, psi_1, psi_2, psi_3, psi_4, nu_1, nu_2, nu_3, nu_4] = [x, psi, nu]
+    self.R3 = cp.bmat([
+      [idx,   xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
+      [zerox, zero,  zero,  id,    zeros,  zero,  zero,  zero,  zeros],
+      [zerox, zero,  zero,  zero,  zeros,  zero,  zero,  id,    zeros],
+    ])
+
+    # Transformation matrix to go from [x, psi_4, nu_4] to [x, psi_1, psi_2, psi_3, psi_4, nu_1, nu_2, nu_3, nu_4] = [x, psi, nu]
+    self.Rsat = cp.bmat([
+      [idx,    xzero, xzero, xzero, xzeros, xzero, xzero, xzero, xzeros],
+      [szerox, szero, szero, szero, ids,    szero, szero, szero, szeros],
+      [szerox, szero, szero, szero, szeros, szero, szero, szero, ids]
+    ])
+
+    # Transformation matrix to go from [x, psi, nu] to [x, psi]
+    self.Rnu = cp.bmat([
+      [np.eye(self.nx),                np.zeros((self.nx, self.nphi)),   np.zeros((self.nx, self.nq))],
+      [np.zeros((self.nphi, self.nx)), np.eye(self.nphi),                np.zeros((self.nphi, self.nq))],
+      [self.R @ self.Nvx,              np.eye(self.R.shape[0]) - self.R, np.zeros((self.nphi, self.nq))],
+    ])
+
+    # Structure of sector condition for layer 1 to add to finsler constraint
+    self.Omega1 = cp.bmat([
+      [np.zeros((self.nx, self.nx)),         np.zeros((self.nx, self.neurons[0])),         np.zeros((self.nx, self.neurons[0]))],
+      [self.Z1, self.T1, -self.T1],
+      [np.zeros((self.neurons[0], self.nx)), np.zeros((self.neurons[0], self.neurons[0])), np.zeros((self.neurons[0], self.neurons[0]))]
+    ])
+    
+    # Structure of sector condition for layer 2 to add to finsler constraint
+    self.Omega2 = cp.bmat([
+      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[1])), np.zeros((self.nx, self.neurons[1]))],
+      [self.Z2, self.T2, -self.T2],
+      [np.zeros((self.neurons[1], self.nx)), np.zeros((self.neurons[1], self.neurons[1])), np.zeros((self.neurons[1], self.neurons[1]))]
+    ])
+    
+    # Structure of sector condition for layer 3 to add to finsler constraint
+    self.Omega3 = cp.bmat([
+      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.neurons[2])), np.zeros((self.nx, self.neurons[2]))],
+      [self.Z3, self.T3, -self.T3],
+      [np.zeros((self.neurons[2], self.nx)), np.zeros((self.neurons[2], self.neurons[2])), np.zeros((self.neurons[2], self.neurons[2]))]
+    ])
+
+    # Structure of sector condition for last saturation to add to finsler constraint
+    self.Omegas = cp.bmat([
+      [np.zeros((self.nx, self.nx)), np.zeros((self.nx, self.nu)), np.zeros((self.nx, self.nu))],
+      [self.Z_sat, self.T_sat, -self.T_sat],
+      [np.zeros((self.nu, self.nx)), np.zeros((self.nu, self.nu)), np.zeros((self.nu, self.nu))]
+    ])
+
+    # Addition of sector conditions to Delta V matrix
+    self.M += -self.gamma_scal * self.Rnu.T @ (self.R1.T @ (self.bigX1 + self.bigX1.T) @ self.R1 + self.R2.T @ (self.bigX2 + self.bigX2.T) @ self.R2 + self.R3.T @ (self.bigX3 + self.bigX3.T) @ self.R3 + self.Rsat.T @ (self.bigX4 + self.bigX4.T) @ self.Rsat) @ self.Rnu
+
+    # Definition of Ker([x, psi, nu]) to add in the finsler constraints
     self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
 
-    # Finsler constraints
+    # Finsler constraints for each layer
     self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
 
     self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
@@ -216,37 +235,21 @@ class LMI():
 
     self.finsler4 = self.Rsat.T @ (self.bigX4 - self.Omegas + self.bigX4.T - self.Omegas.T) @ self.Rsat + self.N4 @ self.hconstr + self.hconstr.T @ self.N4.T
    
-    self.m_thres = 1e-6
-
-    Rho = cp.Variable(self.nphi)
-    L = cp.Variable(self.nphi)
-    self.Rho = cp.diag(Rho)
-    self.L = cp.diag(L)
+    # Part regarding the dynamic of ETA with R
     self.id = np.eye(self.nphi)
-    self.new_sec = self.Rho + self.L - self.id
-
-    self.newM = cp.bmat([
-      [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
-      [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec + self.new_sec.T]
-    ])
-
+    self.new_sec = self.Rho - self.id
+    
     # Constraint definition 
     self.constraints = [self.P >> 0]
-    # self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
+    self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
     self.constraints += [self.finsler1 << 0]
     self.constraints += [self.finsler2 << 0]
     self.constraints += [self.finsler3 << 0]
     self.constraints += [self.finsler4 << 0]
-    self.constraints += [self.newM << -self.m_thres * np.eye(self.newM.shape[0])]
     self.constraints += [self.Rho >> 0]
-    self.constraints += [self.L >> 0]
     self.constraints += [self.new_sec << 0]
-
-    self.eps = cp.Variable((1, 1))
-    self.constraints += [self.eps >> 0]
-    self.constraints += [self.Rho + self.L -(1 - self.eps) * self.id >> 0]
-    self.constraints += [np.linalg.inv(self.gamma_mat) @ self.Rho - self.eps * self.id << 0]
-
+    self.constraints += [self.eps - self.eps_thresh >= 0]
+    self.constraints += [self.Rho + (self.eps - 1) * self.id >> 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -270,18 +273,21 @@ class LMI():
     ])
     self.constraints += [ellip >> 0]
 
-    self.lambda1 = cp.Parameter(nonneg=True)
+  # Function that handles final problem definition
+  def create_problem(self):
 
     # Objective function definition
-    # self.objective = cp.Minimize(cp.trace(self.P))
+    # lambda1 parameter controls the trade-off between the trace of P and the epsilon parameter responsible for size of ROA and magnitude of the computational savings
     self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + (1 - self.lambda1) * self.eps)
 
     # Problem definition
     self.prob = cp.Problem(self.objective, self.constraints)
 
+    # Warnings disabled only for clearness during debug procedures
     # User warnings filter
     warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
 
+  # Function that takes parameter values as input and solves the LMI
   def solve(self, alpha_val, lambda_val, verbose=False):
     self.alpha.value = alpha_val
     self.lambda1.value = lambda_val
@@ -298,6 +304,7 @@ class LMI():
         print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
       return self.P.value, self.T.value, self.Z.value
   
+  # Function that searches for the optimal alpha value by performing a golden ratio search until a certain numerical accuracy is reached or the limit of iterations is reached 
   def search_alpha(self, feasible_extreme, infeasible_extreme, threshold, verbose=False):
 
     golden_ratio = (1 + np.sqrt(5)) / 2
@@ -335,29 +342,24 @@ class LMI():
     
     return feasible_extreme
 
+  # Function that saves the variables of interest to use in the simulations
   def save_results(self, path_dir: str):
     if not os.path.exists(path_dir):
       os.makedirs(path_dir)
     np.save(f"{path_dir}/P.npy", self.P.value)
     np.save(f"{path_dir}/T.npy", self.T.value)
     np.save(f"{path_dir}/Z.npy", self.Z.value)
-    np.save(f"{path_dir}/Rho.npy", self.R.value)
-    np.save(f"{path_dir}/L.npy", self.L.value)
+    np.save(f"{path_dir}/Rho.npy", self.Rho.value)
     np.save(f"{path_dir}/M.npy", self.M.value)
-    np.save(f"{path_dir}/newM.npy", self.newM.value)
-    if self.xETM:
-      np.save(f"{path_dir}/bigX1.npy", self.bigX1.value)
-      np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
-      np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
-      np.save(f"{path_dir}/bigX4.npy", self.bigX4.value)
-    else:
-      np.save(f"{path_dir}/Omega1.npy", self.Omega1.value)
-      np.save(f"{path_dir}/Omega2.npy", self.Omega2.value)
-      np.save(f"{path_dir}/Omega3.npy", self.Omega3.value)
-      np.save(f"{path_dir}/Omegas.npy", self.Omegas.value)
+    np.save(f"{path_dir}/bigX1.npy", self.bigX1.value)
+    np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
+    np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
+    np.save(f"{path_dir}/bigX4.npy", self.bigX4.value)
       
-    
+# Main loop execution 
 if __name__ == "__main__":
+  
+  # Weights and bias import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
   W2_name = os.path.abspath(__file__ + "/../weights/W2.csv")
   W3_name = os.path.abspath(__file__ + "/../weights/W3.csv")
@@ -383,6 +385,17 @@ if __name__ == "__main__":
   
   b = [b1, b2, b3, b4]
 
+  # Lmi object creation
   lmi = LMI(W, b)
+  
+  # Alpha search 
+  # alpha = lmi.search_alpha(1.0, 0.0, 1e-5, verbose=True)
+  
+  # Good alpha value found in previous simulations
   alpha = 0.05
-  # P, T, Z = lmi.solve(alpha, verbose=True)
+
+  # Lambda1 value definition
+  lambda1 = 0.5 # To give equal priority to both objectives
+  
+  # Solve LMI for given alpha and lambda value
+  # P, T, Z = lmi.solve(alpha, lambda1, verbose=True)

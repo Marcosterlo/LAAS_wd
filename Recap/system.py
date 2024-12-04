@@ -32,9 +32,9 @@ class System():
 
     # State matrices in the form x⁺ = Ax + Bu + C phi * D ref
     self.A = np.array([
-        [1, self.dt, 0],
-        [self.g*self.dt/self.l, 1-self.mu*self.dt/(self.m*self.l**2), 0],
-        [1, 0, 1]
+        [1,                       self.dt,                                0],
+        [self.g*self.dt/self.l,   1-self.mu*self.dt/(self.m*self.l**2),   0],
+        [1,                       0,                                      1]
     ])
     self.B = np.array([
         [0],
@@ -113,16 +113,14 @@ class System():
 
     # ETM related parameters
     # Dynamic threshold for each layer plus output, see params.py file
-    self.eta = np.ones(self.nlayers)*params.eta0
+    # self.eta = np.ones(self.nlayers)*params.eta0
     self.rho = params.rhos
-    self.lam = params.lambdas
-    self.gammas = -params.gammas
-    # self.gammas = np.ones(self.nlayers) * (2.0)
+    self.gammas = np.ones(self.nlayers) * params.gamma
 
     # Last output of the neural network for each layer, initialized to arbitrary high value to trigger an event on initialization
     self.last_w = []
     for i, neuron in enumerate(self.neurons):
-      self.last_w.append(np.ones((neuron, 1))*1e3)
+      self.last_w.append(np.ones((neuron, 1))*1e8)
 
     # List to store ETM triggering matrices
     self.bigX = Omega
@@ -144,18 +142,23 @@ class System():
     # Iteration for each layer
     for l in range(self.nlayers):
       # Particular case for the first layer since the input is the state
+      
+      # Fake omega for fist layer
+
       if l == 0:
         input = torch.tensor(x)
       else:
+        if omega is None:
+          omega = np.zeros((1, self.W[l].shape[1]))
         input = torch.tensor(omega.reshape(1, self.W[l].shape[1]))
       
       # Forward pass without activation function
       nu = self.layers[l](input).detach().numpy().reshape(self.W[l].shape[0], 1)
 
-      # Event computation: Psi >= rho * eta
+      # Event computation: gamma * Psi >= rho * eta
       # Right hand term
       rht = self.rho[l] * self.eta[l]
-      # Left hand term: [xtilde, psitilde, nutilde]^T @ X @ [xtilde, psitilde, nutilde]
+      # Left hand term: gamma * [xtilde, psitilde, nutilde]^T @ X @ [xtilde, psitilde, nutilde]
       xtilde = self.state.reshape(3,1) - self.xstar.reshape(3, 1)
       psitilde = nu - self.last_w[l]
       nutilde = nu - self.wstar[l]
@@ -182,7 +185,7 @@ class System():
       
     # Eta dynamics
     for i in range(self.nlayers):
-      self.eta[i] = (self.rho[i] + self.lam[i]) * self.eta[i] - val[i]
+      self.eta[i] = self.rho[i] * self.eta[i] - val[i]
     
     # Returns the last output value and the event vector
     return omega, e
@@ -254,12 +257,16 @@ if __name__ == "__main__":
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
     # theta = 1*np.pi/180
     # vtheta = 1.0
+    ref = np.random.uniform(-ref_bound, ref_bound)
+    s = System(W, b, bigX, ref)
     x0 = np.array([[theta], [vtheta], [0.0]])
-    if (x0).T @ P @ (x0) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
+    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
       in_ellip = True
-      ref = np.random.uniform(-ref_bound, ref_bound)*0
-      s = System(W, b, bigX, ref)
+      # ref = 0.0
+      eta0 = ((1 - (x0).T @ P @ (x0)) / (s.nlayers * 2))[0][0]
+      s.eta = np.ones(s.nlayers) * eta0
       print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+      print(f"Initial eta0: {eta0:.2f}")
       s.state = x0
 
   nsteps = 300
