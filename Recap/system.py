@@ -261,7 +261,7 @@ if __name__ == "__main__":
     # ref = 0.0
     x0 = np.array([[theta], [vtheta], [0.0]])
     s = System(W, b, bigX, ref)
-    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
+    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
       eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
       in_ellip = True
       s.eta = np.ones(s.nlayers) * eta0
@@ -277,13 +277,19 @@ if __name__ == "__main__":
   etas = []
   lyap = []
 
+  check = False
+
   for i in range(nsteps):
-    state, u, e, eta = s.step()
-    states.append(state)
-    inputs.append(u)
-    events.append(e)
-    etas.append(eta)
-    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
+    if not check:
+      state, u, e, eta = s.step()
+      states.append(state)
+      inputs.append(u)
+      events.append(e)
+      etas.append(eta)
+      lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
+      if lyap[-1] < 1e-5 and not check:
+        check = True
+        nsteps = i+1
 
   states = np.insert(states, 0, x0, axis=0)
   states = np.delete(states, -1, axis=0)
