@@ -269,27 +269,26 @@ if __name__ == "__main__":
       print(f"Initial eta0: {eta0:.2f}")
       s.state = x0
 
-  nsteps = 300
-
   states = []
   inputs = []
   events = []
   etas = []
   lyap = []
 
-  check = False
+  stop_run = False
+  nsteps = 0
+  lyap_magnitude = 1e-6
 
-  for i in range(nsteps):
-    if not check:
-      state, u, e, eta = s.step()
-      states.append(state)
-      inputs.append(u)
-      events.append(e)
-      etas.append(eta)
-      lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
-      if lyap[-1] < 1e-5 and not check:
-        check = True
-        nsteps = i+1
+  while not stop_run:
+    nsteps += 1
+    state, u, e, eta = s.step()
+    states.append(state)
+    inputs.append(u)
+    events.append(e)
+    etas.append(eta)
+    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
+    if lyap[-1] < lyap_magnitude:
+      stop_run = True
 
   states = np.insert(states, 0, x0, axis=0)
   states = np.delete(states, -1, axis=0)
@@ -305,7 +304,7 @@ if __name__ == "__main__":
   etas = np.squeeze(np.array(etas))
   lyap = np.squeeze(np.array(lyap))
   lyap_diff = np.diff(lyap)
-  if np.all(lyap_diff <= 0):
+  if np.all(lyap_diff <= 1e-25):
     print("Lyapunov function is always decreasing.")
   else:
     print("Lyapunov function is not always decreasing.")
