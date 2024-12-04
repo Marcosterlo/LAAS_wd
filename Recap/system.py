@@ -255,15 +255,15 @@ if __name__ == "__main__":
   while not in_ellip:
     theta = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
+    ref = np.random.uniform(-ref_bound, ref_bound)
     # theta = 1*np.pi/180
     # vtheta = 1.0
-    ref = np.random.uniform(-ref_bound, ref_bound)
-    s = System(W, b, bigX, ref)
+    # ref = 0.0
     x0 = np.array([[theta], [vtheta], [0.0]])
-    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
+    s = System(W, b, bigX, ref)
+    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
+      eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
       in_ellip = True
-      # ref = 0.0
-      eta0 = ((1 - (x0).T @ P @ (x0)) / (s.nlayers * 2))[0][0]
       s.eta = np.ones(s.nlayers) * eta0
       print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
       print(f"Initial eta0: {eta0:.2f}")
@@ -379,13 +379,13 @@ if __name__ == "__main__":
   from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
 
   fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
-  ax.plot(states[:, 0], states[:, 1], states[:, 2], 'b')
-  ax.plot(s.xstar[0], s.xstar[1], s.xstar[2], marker='o', markersize=5, color='r')
+  ax.plot(states[:, 0] - s.xstar[0], states[:, 1] - s.xstar[1], states[:, 2] - s.xstar[2], 'b')
+  ax.plot(s.xstar[0]*0, s.xstar[1]*0, s.xstar[2]*0, marker='o', markersize=5, color='r')
   plt.legend()
   plt.show()
 
   fig, ax = ellipsoid_plot_2D(P[:2, :2], False, color='b', legend='ROA with dynamic ETM')
-  ax.plot(states[:, 0], states[:, 1], 'b')
-  ax.plot(s.xstar[0], s.xstar[1], marker='o', markersize=5, color='r')
+  ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], 'b')
+  ax.plot(s.xstar[0]*0, s.xstar[1]*0, marker='o', markersize=5, color='r')
   plt.legend()
   plt.show()

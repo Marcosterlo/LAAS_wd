@@ -246,10 +246,10 @@ class LMI():
     self.constraints += [self.finsler2 << 0]
     self.constraints += [self.finsler3 << 0]
     self.constraints += [self.finsler4 << 0]
-    self.constraints += [self.Rho >> 0]
+    # self.constraints += [self.Rho >> 0]
     self.constraints += [self.new_sec << 0]
     self.constraints += [self.eps - self.eps_thresh >= 0]
-    self.constraints += [self.Rho + (self.eps - 1) * self.id >> 0]
+    self.constraints += [self.Rho + (1 - self.lambda1) * (self.eps - 1) * self.id >> 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
