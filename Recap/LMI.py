@@ -8,7 +8,7 @@ class LMI():
   def __init__(self, W, b):
     
     # Declare system to import values
-    self.system = System(W, b, [], 0.0)
+    self.system = System(W, b, [], 0.0, 'finsler')
     self.nx = self.system.nx
     self.nu = self.system.nu
     self.nq = self.system.nq
@@ -300,7 +300,7 @@ class LMI():
       # If the function is called to solve the LMI, the gamma value computed with respect to lambda and max and min gammas
       self.gamma_scal.value = self.gamma_low + self.lambda1.value * (self.gamma_high - self.gamma_low)
     try:
-      self.prob.solve(solver=cp.MOSEK, verbose=True)
+      self.prob.solve(solver=cp.MOSEK, verbose=False)
     except cp.error.SolverError:
       return None
 
@@ -331,13 +331,13 @@ class LMI():
       alpha2 = infeasible_extreme + (feasible_extreme - infeasible_extreme) / golden_ratio
       
       # Solve the LMI for the two alpha values
-      ROA = self.solve(alpha1, lambda1, gamma, verbose=False, search=True)
+      ROA = self.solve(alpha1, lambda1, None, verbose=False, search=False)
       if ROA is None:
         val1 = -1
       else:
         val1 = ROA
       
-      ROA = self.solve(alpha2, verbose=False, search=True)
+      ROA = self.solve(alpha2, lambda1, None, verbose=False, search=False)
       if ROA is None:
         val2 = -1
       else:
