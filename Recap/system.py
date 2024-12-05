@@ -111,7 +111,7 @@ class System():
     self.wstar = [wstar1, wstar2, wstar3, wstar4]
 
     # ETM related parameters
-    self.rho = np.ones(self.nlayers) * np.load('finsler/Rho.npy')
+    self.rho = np.ones(self.nlayers) * np.load('finsler/Rho.npy')[0][0]
     self.lambda1 = np.load('finsler/lambda1.npy')
     self.gamma_low = np.load('finsler/gamma_low.npy')
     self.gamma_high = np.load('finsler/gamma_high.npy')
