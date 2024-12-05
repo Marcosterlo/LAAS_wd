@@ -6,10 +6,13 @@ from scipy.optimize import fsolve
 import warnings
 
 class System():
-  def __init__(self, W, b, Omega, ref):
+  def __init__(self, W, b, Omega, ref, path):
 
     # Ignore useless warnings from torch
     warnings.filterwarnings("ignore", category=UserWarning)
+
+    # Directory where the LMI parameters are stored
+    self.path = path
 
     # State of the system variable 
     self.state = None
@@ -111,10 +114,10 @@ class System():
     self.wstar = [wstar1, wstar2, wstar3, wstar4]
 
     # ETM related parameters
-    self.rho = np.ones(self.nlayers) * np.load('finsler/Rho.npy')[0][0]
-    self.lambda1 = np.load('finsler/lambda1.npy')
-    self.gamma_low = np.load('finsler/gamma_low.npy')
-    self.gamma_high = np.load('finsler/gamma_high.npy')
+    self.rho = np.ones(self.nlayers) * np.load(self.path + '/Rho.npy')[0][0]
+    self.lambda1 = np.load(self.path + '/lambda1.npy')
+    self.gamma_low = np.load(self.path + '/gamma_low.npy')
+    self.gamma_high = np.load(self.path + '/gamma_high.npy')
     self.gammas = np.ones(self.nlayers) * (self.gamma_low + self.lambda1 * (self.gamma_high - self.gamma_low))
 
     # Last output of the neural network for each layer, initialized to arbitrary high value to trigger an event on initialization
@@ -206,6 +209,10 @@ class System():
 if __name__ == "__main__":
   import os
 
+  # path = 'finsler-0.5'
+  path = 'finsler-1'
+  # path = 'finsler-0'
+
   # Weights and biases import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
   W2_name = os.path.abspath(__file__ + "/../weights/W2.csv")
@@ -241,18 +248,18 @@ if __name__ == "__main__":
   Omega = [Omega1, Omega2, Omega3, Omegas]
 
   # New ETM matrices import
-  bigX1 = np.load('finsler/bigX1.npy')
-  bigX2 = np.load('finsler/bigX2.npy')
-  bigX3 = np.load('finsler/bigX3.npy')
-  bigX4 = np.load('finsler/bigX4.npy')
+  bigX1 = np.load(path + '/bigX1.npy')
+  bigX2 = np.load(path + '/bigX2.npy')
+  bigX3 = np.load(path + '/bigX3.npy')
+  bigX4 = np.load(path + '/bigX4.npy')
 
   bigX = [bigX1, bigX2, bigX3, bigX4]
 
   # System initialization
-  s = System(W, b, bigX, 0.0)
+  s = System(W, b, bigX, 0.0, path)
   
   # P matrix import for lyapunov function
-  P = np.load('finsler/P.npy')
+  P = np.load(path + '/P.npy')
 
   print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
@@ -269,14 +276,18 @@ if __name__ == "__main__":
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
     ref = np.random.uniform(-ref_bound, ref_bound)
 
+    theta = 5.0 * np.pi / 180
+    vtheta = -0.5
+    ref = 1 * np.pi / 180
+
     # Initial state definition and system initialization
     x0 = np.array([[theta], [vtheta], [0.0]])
-    s = System(W, b, bigX, ref)
+    s = System(W, b, bigX, ref, path)
 
     # Check if the initial state is inside the ellipsoid
     if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
       # Initial eta0 computation with respect to the initial state
-      eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
+      eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]*0
       
       # Flag variable update to stop the search
       in_ellip = True
@@ -306,7 +317,7 @@ if __name__ == "__main__":
   nsteps = 0
 
   # Magnitude of the Lyapunov function to stop the simulation
-  lyap_magnitude = 1e-6
+  lyap_magnitude = 1e-2
 
   # Simulation loop
   while not stop_run:

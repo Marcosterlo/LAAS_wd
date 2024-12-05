@@ -300,7 +300,7 @@ class LMI():
       # If the function is called to solve the LMI, the gamma value computed with respect to lambda and max and min gammas
       self.gamma_scal.value = self.gamma_low + self.lambda1.value * (self.gamma_high - self.gamma_low)
     try:
-      self.prob.solve(solver=cp.MOSEK, verbose=False)
+      self.prob.solve(solver=cp.MOSEK, verbose=True)
     except cp.error.SolverError:
       return None
 
@@ -310,7 +310,7 @@ class LMI():
       if verbose:
         print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
         print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
-        print(f"Current gamma value: {self.gamma_scal}")
+        print(f"Current gamma value: {self.gamma_scal.value}")
         print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(self.P.value))}")
         print(f"Rho value: {np.max(self.Rho.value)}")
       
@@ -494,10 +494,10 @@ if __name__ == "__main__":
   alpha = 0.05
 
   # High gamma serach
-  high_gamma = lmi.search_highest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
+  # high_gamma = lmi.search_highest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
 
   # Low gamma search
-  low_gamma = lmi.search_lowest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
+  # low_gamma = lmi.search_lowest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
   
   # Lambda1 value definition, 1 to give priority to ROA size, 0 to give priority to the reduction of the number of events
   # lambda1 = 0.5 # To give equal priority to both objectives
