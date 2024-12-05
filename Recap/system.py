@@ -1,7 +1,6 @@
 import numpy as np
 import torch.nn as nn
 import torch
-import params
 from scipy.linalg import block_diag
 from scipy.optimize import fsolve
 import warnings
@@ -112,10 +111,11 @@ class System():
     self.wstar = [wstar1, wstar2, wstar3, wstar4]
 
     # ETM related parameters
-    # Dynamic threshold for each layer plus output, see params.py file
-    # self.eta = np.ones(self.nlayers)*params.eta0
-    self.rho = params.rhos
-    self.gammas = np.ones(self.nlayers) * params.gamma
+    self.rho = np.ones(self.nlayers) * np.load('finsler/Rho.npy')
+    self.lambda1 = np.load('finsler/lambda1.npy')
+    self.gamma_low = np.load('finsler/gamma_low.npy')
+    self.gamma_high = np.load('finsler/gamma_high.npy')
+    self.gammas = np.ones(self.nlayers) * (self.gamma_low + self.lambda1 * (self.gamma_high - self.gamma_low))
 
     # Last output of the neural network for each layer, initialized to arbitrary high value to trigger an event on initialization
     self.last_w = []

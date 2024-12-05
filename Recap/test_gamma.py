@@ -1,4 +1,5 @@
 from system import System
+import params
 import numpy as np
 import cvxpy as cp
 import warnings
@@ -35,6 +36,9 @@ class LMI():
     self.nbigx2 = self.nx + self.neurons[1] * 2
     self.nbigx3 = self.nx + self.neurons[2] * 2
     self.nbigx4 = self.nx + self.neurons[3] * 2
+
+    self.finsler = False
+    self.ROA = 0
     
     # Sign definition of Delta V parameter
     self.m_thres = 1e-6
@@ -43,13 +47,12 @@ class LMI():
     self.eps_thresh = 1e-6
 
     # Parameters definition
+    self.gamma_scal = cp.Parameter(nonneg=True)
     self.alpha = cp.Parameter(nonneg=True)
     self.lambda1 = cp.Parameter(nonneg=True)
-    self.gamma_scal = cp.Parameter(nonneg=True)
 
     # ETM Parameters initialization
-    self.gamma_low = 0.55
-    self.gamma_high = 1.0
+    self.gamma_scal.value = params.gamma
 
     # Auxiliary matrices
     self.Abar = self.A + self.B @ self.Rw
@@ -85,35 +88,36 @@ class LMI():
     self.Z_sat = cp.reshape(self.Z[-1, :], (self.nu, self.nx))
 
     # Finsler multipliers, structured to reduce computational burden and different for each layer
-    self.N11 = cp.Variable((self.nx, self.nphi))
-    self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N13 = cp.Variable(self.nphi)
-    self.N13 = cp.diag(N13)
-    self.N1 = cp.vstack([self.N11, self.N12, self.N13])
+    if self.finsler:
+      self.N11 = cp.Variable((self.nx, self.nphi))
+      self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N13 = cp.Variable(self.nphi)
+      self.N13 = cp.diag(N13)
+      self.N1 = cp.vstack([self.N11, self.N12, self.N13])
 
-    self.N21 = cp.Variable((self.nx, self.nphi))
-    self.N22 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N23 = cp.Variable(self.nphi)
-    self.N23 = cp.diag(N23)
-    self.N2 = cp.vstack([self.N21, self.N22, self.N23])
-    
-    self.N31 = cp.Variable((self.nx, self.nphi))
-    self.N32 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N33 = cp.Variable(self.nphi)
-    self.N33 = cp.diag(N33)
-    self.N3 = cp.vstack([self.N31, self.N32, self.N33])
+      self.N21 = cp.Variable((self.nx, self.nphi))
+      self.N22 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N23 = cp.Variable(self.nphi)
+      self.N23 = cp.diag(N23)
+      self.N2 = cp.vstack([self.N21, self.N22, self.N23])
+      
+      self.N31 = cp.Variable((self.nx, self.nphi))
+      self.N32 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N33 = cp.Variable(self.nphi)
+      self.N33 = cp.diag(N33)
+      self.N3 = cp.vstack([self.N31, self.N32, self.N33])
 
-    self.N41 = cp.Variable((self.nx, self.nphi))
-    self.N42 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N43 = cp.Variable(self.nphi)
-    self.N43 = cp.diag(N43)
-    self.N4 = cp.vstack([self.N41, self.N42, self.N43])
+      self.N41 = cp.Variable((self.nx, self.nphi))
+      self.N42 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N43 = cp.Variable(self.nphi)
+      self.N43 = cp.diag(N43)
+      self.N4 = cp.vstack([self.N41, self.N42, self.N43])
 
-    # New ETM matrices
-    self.bigX1 = cp.Variable((self.nbigx1, self.nbigx1))
-    self.bigX2 = cp.Variable((self.nbigx2, self.nbigx2))
-    self.bigX3 = cp.Variable((self.nbigx3, self.nbigx3))
-    self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
+      # New ETM matrices
+      self.bigX1 = cp.Variable((self.nbigx1, self.nbigx1))
+      self.bigX2 = cp.Variable((self.nbigx2, self.nbigx2))
+      self.bigX3 = cp.Variable((self.nbigx3, self.nbigx3))
+      self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
     
     # Eta dynamics variables
     self.eps = cp.Variable((1, 1), nonneg=True)
@@ -222,19 +226,21 @@ class LMI():
     ])
 
     # Addition of sector conditions to Delta V matrix
-    self.M += -self.gamma_scal * self.Rnu.T @ (self.R1.T @ (self.bigX1 + self.bigX1.T) @ self.R1 + self.R2.T @ (self.bigX2 + self.bigX2.T) @ self.R2 + self.R3.T @ (self.bigX3 + self.bigX3.T) @ self.R3 + self.Rsat.T @ (self.bigX4 + self.bigX4.T) @ self.Rsat) @ self.Rnu
+    # self.M += -self.gamma_scal * self.Rnu.T @ (self.R1.T @ (self.bigX1 + self.bigX1.T) @ self.R1 + self.R2.T @ (self.bigX2 + self.bigX2.T) @ self.R2 + self.R3.T @ (self.bigX3 + self.bigX3.T) @ self.R3 + self.Rsat.T @ (self.bigX4 + self.bigX4.T) @ self.Rsat) @ self.Rnu
+    self.M += -self.gamma_scal * self.Rnu.T @ (self.R1.T @ (self.Omega1 + self.Omega1.T) @ self.R1 + self.R2.T @ (self.Omega2 + self.Omega2.T) @ self.R2 + self.R3.T @ (self.Omega3 + self.Omega3.T) @ self.R3 + self.Rsat.T @ (self.Omegas + self.Omegas.T) @ self.Rsat) @ self.Rnu
 
-    # Definition of Ker([x, psi, nu]) to add in the finsler constraints
-    self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
+    if self.finsler:
+      # Definition of Ker([x, psi, nu]) to add in the finsler constraints
+      self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
 
-    # Finsler constraints for each layer
-    self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
+      # Finsler constraints for each layer
+      self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
 
-    self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
-    
-    self.finsler3 = self.R3.T @ (self.bigX3 - self.Omega3 + self.bigX3.T - self.Omega3.T) @ self.R3 + self.N3 @ self.hconstr + self.hconstr.T @ self.N3.T
+      self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
+      
+      self.finsler3 = self.R3.T @ (self.bigX3 - self.Omega3 + self.bigX3.T - self.Omega3.T) @ self.R3 + self.N3 @ self.hconstr + self.hconstr.T @ self.N3.T
 
-    self.finsler4 = self.Rsat.T @ (self.bigX4 - self.Omegas + self.bigX4.T - self.Omegas.T) @ self.Rsat + self.N4 @ self.hconstr + self.hconstr.T @ self.N4.T
+      self.finsler4 = self.Rsat.T @ (self.bigX4 - self.Omegas + self.bigX4.T - self.Omegas.T) @ self.Rsat + self.N4 @ self.hconstr + self.hconstr.T @ self.N4.T
    
     # Part regarding the dynamic of ETA with R
     self.id = np.eye(self.nphi)
@@ -243,14 +249,15 @@ class LMI():
     # Constraint definition 
     self.constraints = [self.P >> 0]
     self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
-    self.constraints += [self.finsler1 << 0]
-    self.constraints += [self.finsler2 << 0]
-    self.constraints += [self.finsler3 << 0]
-    self.constraints += [self.finsler4 << 0]
-    # self.constraints += [self.Rho >> 0]
+    if self.finsler:
+      self.constraints += [self.finsler1 << 0]
+      self.constraints += [self.finsler2 << 0]
+      self.constraints += [self.finsler3 << 0]
+      self.constraints += [self.finsler4 << 0]
     self.constraints += [self.new_sec << 0]
     self.constraints += [self.eps - self.eps_thresh >= 0]
     self.constraints += [self.Rho + (1 - self.lambda1) * (self.eps - 1) * self.id >> 0]
+    self.constraints += [self.Rho + (self.lambda1 - self.eps -1) * self.id << 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -279,7 +286,8 @@ class LMI():
 
     # Objective function definition
     # lambda1 parameter controls the trade-off between the trace of P and the epsilon parameter responsible for size of ROA and magnitude of the computational savings
-    self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + (1 - self.lambda1) * self.eps)
+    # self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + (1 - self.lambda1) * self.eps)
+    self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + self.eps)
 
     # Problem definition
     self.prob = cp.Problem(self.objective, self.constraints)
@@ -289,28 +297,26 @@ class LMI():
     warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
 
   # Function that takes parameter values as input and solves the LMI
-  def solve(self, alpha_val, lambda_val, gamma_val, verbose=False, search=False):
+  def solve(self, alpha_val, lambda_val, gamma_val, verbose=False):
     self.alpha.value = alpha_val
     self.lambda1.value = lambda_val
-    if search:
-      self.gamma_scal.value = gamma_val
-    else:
-      self.gamma_scal.value = self.gamma_low + self.lambda1.value * (self.gamma_high - self.gamma_low)
+    self.gamma_scal.value = gamma_val
     try:
-      self.prob.solve(solver=cp.MOSEK, verbose=True)
+      self.prob.solve(solver=cp.MOSEK, verbose=False)
     except cp.error.SolverError:
-      return None
+      return None, None, None
 
     if self.prob.status not in ["optimal", "optimal_inaccurate"]:
-      return None
+      return None, None, None
     else:
+      self.ROA = np.pi/np.sqrt(np.linalg.det(self.P.value))
       if verbose:
         print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
         print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
         print(f"Current gamma value: {self.gamma_scal}")
         print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(self.P.value))}")
         print(f"Rho value: {np.max(self.Rho.value)}")
-      return np.pi/np.sqrt(np.linalg.det(self.P.value))
+      return self.P.value, self.T.value, self.Z.value
   
   # Function that searches for the optimal alpha value by performing a golden ratio search until a certain numerical accuracy is reached or the limit of iterations is reached 
   def search_alpha(self, feasible_extreme, infeasible_extreme, threshold, lambda1, gamma, verbose=False):
@@ -322,34 +328,34 @@ class LMI():
       alpha1 = feasible_extreme - (feasible_extreme - infeasible_extreme) / golden_ratio
       alpha2 = infeasible_extreme + (feasible_extreme - infeasible_extreme) / golden_ratio
       
-      ROA = self.solve(alpha1, lambda1, gamma, verbose=False, search=True)
-      if ROA is None:
-        val1 = -1
+      P1, _, _ = self.solve(alpha1, lambda1, gamma, verbose=False)
+      if P1 is None:
+        val1 = 1e10
       else:
-        val1 = ROA
+        val1 = np.max(np.linalg.eigvals(P1))
       
-      ROA = self.solve(alpha2, verbose=False, search=True)
-      if ROA is None:
-        val2 = -1
+      P2, _, _ = self.solve(alpha2, lambda1, gamma, verbose=False)
+      if P2 is None:
+        val2 = 1e10
       else:
-        val2 = ROA
+        val2 = np.max(np.linalg.eigvals(P2))
         
-      if val1 > val2:
+      if val1 < val2:
         feasible_extreme = alpha2
       else:
         infeasible_extreme = alpha1
         
       if verbose:
-        if val1 > val2:
-          ROA = val1
+        if val1 < val2:
+          P_eig = val1
         else:
-          ROA = val2
+          P_eig = val2
         print(f"\nIteration number: {i}")
-        print(f"==================== \nCurrent ROA value: {ROA}")
+        print(f"==================== \nMax eigenvalue of P: {P_eig}")
         print(f"Current alpha value: {feasible_extreme}\n==================== \n")
+    
     return feasible_extreme
 
-  # Function that searches for the best gamma value wehn priority is given to the size of the ROA
   def search_highest_gamma(self, highest_gamma, lowest_gamma, threshold, alpha, verbose=False):
     golden_ratio = (1 + np.sqrt(5)) / 2
     i = 0
@@ -358,17 +364,17 @@ class LMI():
       gamma1 = highest_gamma - (highest_gamma - lowest_gamma) / golden_ratio
       gamma2 = lowest_gamma + (highest_gamma - lowest_gamma) / golden_ratio
       
-      ROA = self.solve(alpha, 1.0, gamma1, verbose=False, search=True)
-      if ROA is None:
-        val1 = -1
+      P1, _, _ = self.solve(alpha, 1.0, gamma1, verbose=False)
+      if P1 is None:
+        val1 = -10
       else:
-        val1 = ROA
+        val1 = self.ROA
       
-      ROA = self.solve(alpha, 1.0, gamma2, verbose=False, search=True)
-      if ROA is None:
-        val2 = -1
+      P2, _, _ = self.solve(alpha, 1.0, gamma2, verbose=False)
+      if P2 is None:
+        val2 = -10
       else:
-        val2 = ROA
+        val2 = self.ROA
         
       if val1 > val2:
         highest_gamma = gamma1
@@ -383,9 +389,9 @@ class LMI():
         print(f"\nIteration number: {i}")
         print(f"==================== \nCurrent ROA: {ROA}")
         print(f"Current gamma value: {highest_gamma}\n==================== \n")
+      
     return highest_gamma
 
-  # Function that searches for the best gamma value wehn priority is given to the reduction of the number of events
   def search_lowest_gamma(self, highest_gamma, lowest_gamma, threshold, alpha, verbose=False):
     golden_ratio = (1 + np.sqrt(5)) / 2
     i = 0
@@ -394,14 +400,14 @@ class LMI():
       gamma1 = highest_gamma - (highest_gamma - lowest_gamma) / golden_ratio
       gamma2 = lowest_gamma + (highest_gamma - lowest_gamma) / golden_ratio
       
-      ROA = self.solve(alpha, 0.0, gamma1, verbose=False, search=True)
-      if ROA is None:
+      P1, _, _ = self.solve(alpha, 0.0, gamma1, verbose=False)
+      if P1 is None:
         feas1 = False
       else:
         feas1 = True
       
-      ROA = self.solve(alpha, 0.0, gamma2, verbose=False, search=True)
-      if ROA is None:
+      P2, _, _ = self.solve(alpha, 0.0, gamma2, verbose=False)
+      if P2 is None:
         feas2 = False
       else:
         feas2 = True
@@ -419,6 +425,7 @@ class LMI():
           print(f"==================== \nProblem is infeasible for gamma = {gamma2}")
           print(f"Current gamma value: {highest_gamma}")
         print(f"====================")
+      
     return highest_gamma
 
   # Function that saves the variables of interest to use in the simulations
@@ -426,10 +433,10 @@ class LMI():
     if not os.path.exists(path_dir):
       os.makedirs(path_dir)
     np.save(f"{path_dir}/P.npy", self.P.value)
+    np.save(f"{path_dir}/T.npy", self.T.value)
+    np.save(f"{path_dir}/Z.npy", self.Z.value)
     np.save(f"{path_dir}/Rho.npy", self.Rho.value)
-    np.save(f"{path_dir}/lambda1.npy", self.lambda1.value)
-    np.save(f"{path_dir}/gamma_low.npy", self.gamma_low)
-    np.save(f"{path_dir}/gamma_high.npy", self.gamma_high)
+    np.save(f"{path_dir}/M.npy", self.M.value)
     np.save(f"{path_dir}/bigX1.npy", self.bigX1.value)
     np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
     np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
@@ -468,22 +475,19 @@ if __name__ == "__main__":
   lmi = LMI(W, b)
   
   # Alpha search 
-  # alpha = lmi.search_alpha(1.0, 0.0, 1e-5, 1.0 verbose=True)
-
+  # alpha = lmi.search_alpha(1.0, 0.0, 1e-5, verbose=True)
+  
   # Good alpha value found in previous simulations
   alpha = 0.05
 
-  # High gamma serach
-  # high_gamma = lmi.search_highest_gamma(2.0, 0.0, 1e-5, alpha, verbose=True)
-
-  # Low gamma search
-  # low_gamma = lmi.search_lowest_gamma(2.0, 0.0, 1e-5, alpha, verbose=True)
+  # Lambda1 value definition
+  lambda1 = 0.0 # To give equal priority to both objectives
   
-  # Lambda1 value definition, 1 to give priority to ROA size, 0 to give priority to the reduction of the number of events
-  lambda1 = 0.5 # To give equal priority to both objectives
-  
-  # Solve LMI for given alpha,lambda and gamma value
-  ROA = lmi.solve(alpha, lambda1, None, verbose=True, search=False)
+  # Solve LMI for given alpha and lambda value
+  # lmi.solve(alpha, lambda1, 0.1, verbose=True)
 
-  # Save results
-  lmi.save_results("results-l1-g055-1")
+  highest_gamma = lmi.search_highest_gamma(10, 0, 1e-5, alpha, verbose=True)
+  lowest_gamma = lmi.search_lowest_gamma(10, 0, 1e-5, alpha, verbose=True)
+
+  np.save('highest_gamma.npy', highest_gamma)
+  np.save('lowest_gamma.npy', lowest_gamma)
