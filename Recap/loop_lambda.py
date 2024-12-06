@@ -34,8 +34,9 @@ path = 'parameters_search'
 lmi = LMI(W, b)
 
 # Alpha search 
-alpha = lmi.search_alpha(1.0, 0.0, 1e-2, 1.0, 1.0, verbose=True)
-np.save(path + '/alpha.npy', alpha)
+# alpha = lmi.search_alpha(1.0, 0.0, 1e-4, 1.0, 1.0, verbose=True)
+# np.save(path + '/alpha.npy', alpha)
+alpha = np.load(path + '/alpha.npy')
 
 # High gamma serach
 high_gamma = lmi.search_highest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
