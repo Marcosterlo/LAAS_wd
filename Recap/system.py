@@ -213,6 +213,7 @@ if __name__ == "__main__":
   # path = 'finsler-0.5'
   path = 'finsler-1'
   # path = 'finsler-0'
+  path = 'parameters_search/lambda_0'
 
   # Weights and biases import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
@@ -277,9 +278,9 @@ if __name__ == "__main__":
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
     ref = np.random.uniform(-ref_bound, ref_bound)
 
-    theta = 5.0 * np.pi / 180
-    vtheta = -0.5
-    ref = 1 * np.pi / 180
+    # theta = 5.0 * np.pi / 180
+    # vtheta = -0.5
+    # ref = 1 * np.pi / 180
 
     # Initial state definition and system initialization
     x0 = np.array([[theta], [vtheta], [0.0]])
@@ -288,7 +289,7 @@ if __name__ == "__main__":
     # Check if the initial state is inside the ellipsoid
     if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0: # and (x0).T @ P @ (x0) >= 0.9:
       # Initial eta0 computation with respect to the initial state
-      eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]*0
+      eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
       
       # Flag variable update to stop the search
       in_ellip = True
@@ -318,7 +319,7 @@ if __name__ == "__main__":
   nsteps = 0
 
   # Magnitude of the Lyapunov function to stop the simulation
-  lyap_magnitude = 1e-2
+  lyap_magnitude = 1e-8
 
   # Simulation loop
   while not stop_run:
