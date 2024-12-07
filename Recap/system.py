@@ -114,6 +114,7 @@ class System():
     self.wstar = [wstar1, wstar2, wstar3, wstar4]
 
     # ETM related parameters
+    self.eta = np.ones(self.nlayers) * 0.0
     self.rho = np.ones(self.nlayers) * np.load(self.path + '/Rho.npy')[0][0]
     self.lambda1 = np.load(self.path + '/lambda1.npy')
     self.gamma_low = np.load(self.path + '/gamma_low.npy')
