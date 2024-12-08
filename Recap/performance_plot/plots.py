@@ -1,19 +1,19 @@
-from system import System
+from Recap.system import System
 import os
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d
 
 # Weights and biases import
-W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
-W2_name = os.path.abspath(__file__ + "/../weights/W2.csv")
-W3_name = os.path.abspath(__file__ + "/../weights/W3.csv")
-W4_name = os.path.abspath(__file__ + "/../weights/W4.csv")
+W1_name = os.path.abspath(__file__ + "/../../weights/W1.csv")
+W2_name = os.path.abspath(__file__ + "/../../weights/W2.csv")
+W3_name = os.path.abspath(__file__ + "/../../weights/W3.csv")
+W4_name = os.path.abspath(__file__ + "/../../weights/W4.csv")
 
-b1_name = os.path.abspath(__file__ + "/../weights/b1.csv")
-b2_name = os.path.abspath(__file__ + "/../weights/b2.csv")
-b3_name = os.path.abspath(__file__ + "/../weights/b3.csv")
-b4_name = os.path.abspath(__file__ + "/../weights/b4.csv")
+b1_name = os.path.abspath(__file__ + "/../../weights/b1.csv")
+b2_name = os.path.abspath(__file__ + "/../../weights/b2.csv")
+b3_name = os.path.abspath(__file__ + "/../../weights/b3.csv")
+b4_name = os.path.abspath(__file__ + "/../../weights/b4.csv")
 
 W1 = np.loadtxt(W1_name, delimiter=',')
 W2 = np.loadtxt(W2_name, delimiter=',')
@@ -30,8 +30,8 @@ b4 = np.loadtxt(b4_name, delimiter=',')
 
 b = [b1, b2, b3, b4]
 
-P0 = np.load('parameters_search/lambda_0/P.npy')
-path0 = "parameters_search/lambda_0"
+P0 = np.load('../parameters_search/lambda_0/P.npy')
+path0 = "../parameters_search/lambda_0"
 
 # Initial ETM matrices import
 bigX1 = np.load(path0 + '/bigX1.npy')
@@ -65,17 +65,19 @@ for i in range(nsimulations):
       initial_states.append(x0)
       disturbances.append(ref)
 
-nsteps = 300
+nsteps = 1000
 nlambda = 50
 max_events = nsteps * s.nphi
 
 update_rates_mean = []
 update_rates_std = []
 
+ROAs = []
+
 for lam in range(nlambda):
   print(f'Lambda: {lam}')
   update_rate_lam = []
-  path = f'parameters_search/lambda_{lam}'
+  path = f'../parameters_search/lambda_{lam}'
   # Initial ETM matrices import
   bigX1 = np.load(path + '/bigX1.npy')
   bigX2 = np.load(path + '/bigX2.npy')
@@ -83,18 +85,28 @@ for lam in range(nlambda):
   bigX4 = np.load(path + '/bigX4.npy')
   bigX = [bigX1, bigX2, bigX3, bigX4]
 
-  for sim in range(nsimulations):
-    s = System(W, b, bigX, disturbances[sim], path)
-    s.state = initial_states[sim]
-    s.eta = np.ones(s.nlayers) * eta0s[sim]
-    n_events = 0
-    for k in range(nsteps):
-      _, _, e, _ = s.step()
-      n_events += e[0] * s.neurons[0] + e[1] * s.neurons[1] + e[2] * s.neurons[2] + e[3] * s.neurons[3]
-    update_rate = n_events / max_events
-    update_rate_lam.append(update_rate)
-  
-  update_rates_mean.append(np.mean(update_rate_lam))
+  P = np.load(path + '/P.npy')
+  ROAs.append(np.pi / np.sqrt(np.linalg.det(P)))
+    
+ROAs = np.array(ROAs).squeeze()
+np.save('ROAs.npy', ROAs)
+
+  #   for sim in range(nsimulations):
+  #     s = System(W, b, bigX, disturbances[sim], path)
+  #     s.state = initial_states[sim]
+  #     s.eta = np.ones(s.nlayers) * eta0s[sim]
+  #     n_events = 0
+  #     for k in range(nsteps):
+  #       _, _, e, _ = s.step()
+  #       n_events += e[0] * s.neurons[0] + e[1] * s.neurons[1] + e[2] * s.neurons[2] + e[3] * s.neurons[3]
+  #     update_rate = n_events / max_events
+  #     update_rate_lam.append(update_rate)
+    
+  #   update_rates_mean.append(np.mean(update_rate_lam))
+  # except(KeyboardInterrupt):
+  #   print("Early interruption")
+  #   nlambda = lam-1
+  #   break
 
 # update_rates_mean = (update_rates_mean - np.min(update_rates_mean)) / (np.max(update_rates_mean) - np.min(update_rates_mean))
 # computational_save = -update_rates_mean + (np.max(update_rates_mean) + np.min(update_rates_mean))
