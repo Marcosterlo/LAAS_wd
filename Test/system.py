@@ -116,8 +116,8 @@ class System():
     # ETM related parameters
     self.eta = np.ones(self.nlayers) * 0.0
     self.rho = np.ones(self.nlayers) * np.load(self.path + '/Rho.npy')[0][0]
-    self.lambda1 = np.load(self.path + '/lambda1.npy')
-    self.gammas = np.ones(self.nlayers)
+    # self.lambda1 = np.load(self.path + '/lambda1.npy')
+    # self.gammas = np.ones(self.nlayers)
     # self.gamma_low = np.load(self.path + '/gamma_low.npy')
     # self.gamma_high = np.load(self.path + '/gamma_high.npy')
     # self.gammas = np.ones(self.nlayers) * (self.gamma_low + self.lambda1 * (self.gamma_high - self.gamma_low))
@@ -170,7 +170,7 @@ class System():
       nutilde = nu - self.wstar[l]
       vec = np.vstack([xtilde, psitilde, nutilde])
       mat = self.bigX[l]
-      lht = self.gammas[l] * (vec.T @ mat @ vec)[0][0]
+      lht = (vec.T @ mat @ vec)[0][0]
 
       event = lht > rht
 
@@ -181,7 +181,7 @@ class System():
         e[l] = 1
         psitilde = nu - omega
         vec = np.vstack([xtilde, psitilde, nutilde])
-        lht = self.gammas[l] * (vec.T @ mat @ vec)[0][0]
+        lht = (vec.T @ mat @ vec)[0][0]
         val[l] = lht
       
       # If no event is triggered, store the last output of the layer as the current output
@@ -220,6 +220,7 @@ if __name__ == "__main__":
   # path = 'just_P'
   path = 'both'
   path = 'new'
+  path = 'new_finsler'
 
   # Weights and biases import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
@@ -344,7 +345,7 @@ if __name__ == "__main__":
     lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
     
     # Stop condition
-    if lyap[-1] < lyap_magnitude:
+    if lyap[-1] < lyap_magnitude or nsteps > 3000:
       stop_run = True
 
   # Data processing
@@ -390,7 +391,7 @@ if __name__ == "__main__":
   print(f"Layer 3 has been triggered {layer3_trigger:.1f}% of times")
   print(f"Output layer has been triggered {layer4_trigger:.1f}% of times")
 
-  print(f"Lambda: {s.lambda1}")
+  # print(f"Lambda: {s.lambda1}")
   print(f"Overall update rate: {(layer1_trigger * s.neurons[0] + layer2_trigger * s.neurons[1] + layer3_trigger * s.neurons[2] + layer4_trigger * s.neurons[3]) / (s.nphi):.2f}%")
 
   # Replace every non event value from 0 to None for ease of plotting
@@ -405,12 +406,6 @@ if __name__ == "__main__":
       events[i][3] = None
       
   import matplotlib.pyplot as plt
-
-  plt.plot(timegrid, events[:, 0], label='Layer 1')
-  plt.plot(timegrid, events[:, 1]*2, label='Layer 2')
-  plt.plot(timegrid, events[:, 2]*3, label='Layer 3')
-  plt.plot(timegrid, events[:, 3]*4, label='Last sat')
-  plt.show()
 
   # Control input plot
   fig, axs = plt.subplots(4, 1)
@@ -464,7 +459,7 @@ if __name__ == "__main__":
   plt.show()
 
   # Lyapunov function plot
-  plt.plot(timegrid, lyap, label='Lyapunov function')
+  plt.plot(timegrid, np.log(lyap), label='Lyapunov function')
   plt.legend()
   plt.grid(True)
   plt.show()

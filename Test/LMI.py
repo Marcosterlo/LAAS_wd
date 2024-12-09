@@ -314,7 +314,7 @@ class LMI():
     #   # If the function is called to solve the LMI, the gamma value computed with respect to lambda and max and min gammas
     #   self.gamma_scal.value = self.gamma_low + self.lambda1.value * (self.gamma_high - self.gamma_low)
     try:
-      self.prob.solve(solver=cp.MOSEK, verbose=False)
+      self.prob.solve(solver=cp.MOSEK, verbose=True)
     except cp.error.SolverError:
       return None
 
