@@ -30,8 +30,10 @@ b4 = np.loadtxt(b4_name, delimiter=',')
 
 b = [b1, b2, b3, b4]
 
-P0 = np.load('../parameters_search/lambda_0/P.npy')
-path0 = "../parameters_search/lambda_0"
+# P0 = np.load('../parameters_search/lambda_0/P.npy')
+# path0 = "../parameters_search/lambda_0"
+P0 = np.load('../fixed_gamma/lambda_0/P.npy')
+path0 = "../fixed_gamma/lambda_0"
 
 # Initial ETM matrices import
 bigX1 = np.load(path0 + '/bigX1.npy')
@@ -66,18 +68,21 @@ for i in range(nsimulations):
       disturbances.append(ref)
 
 nsteps = 1000
-nlambda = 50
+nlambda = 21
 max_events = nsteps * s.nphi
 
 update_rates_mean = []
 update_rates_std = []
+triggers_mean = []
+triggers_std = []
 
 ROAs = []
 
 for lam in range(nlambda):
   print(f'Lambda: {lam}')
   update_rate_lam = []
-  path = f'../parameters_search/lambda_{lam}'
+  # path = f'../parameters_search/lambda_{lam}'
+  path = f'../fixed_gamma/lambda_{lam}'
   # Initial ETM matrices import
   bigX1 = np.load(path + '/bigX1.npy')
   bigX2 = np.load(path + '/bigX2.npy')
@@ -87,9 +92,36 @@ for lam in range(nlambda):
 
   P = np.load(path + '/P.npy')
   ROAs.append(np.pi / np.sqrt(np.linalg.det(P)))
+
+  triggers = []
+
+  for sim in range(nsimulations):
+    s = System(W, b, bigX, disturbances[sim], path)
+    s.state = initial_states[sim]
+    s.eta = np.ones(s.nlayers) * eta0s[sim]
+    n_events = 0
+    events = []
+    for k in range(nsteps):
+      _, _, e, _ = s.step()
+      n_events += e[0] * s.neurons[0] + e[1] * s.neurons[1] + e[2] * s.neurons[2] + e[3] * s.neurons[3]
+      events.append(e)
+
+    events = np.array(events).squeeze()
+    layer1_trigger = np.sum(events[:, 0]) / nsteps
+    layer2_trigger = np.sum(events[:, 1]) / nsteps
+    layer3_trigger = np.sum(events[:, 2]) / nsteps
+    layer4_trigger = np.sum(events[:, 3]) / nsteps
+    triggers.append([layer1_trigger, layer2_trigger, layer3_trigger, layer4_trigger])
+
+    update_rate = n_events / max_events
     
-ROAs = np.array(ROAs).squeeze()
-np.save('ROAs.npy', ROAs)
+    update_rate_lam.append(update_rate) 
+  
+  triggers_mean.append(np.mean(triggers, axis=0)) 
+  triggers_std.append(np.std(triggers, axis=0))
+  update_rates_mean.append(np.mean(update_rate_lam))
+  update_rates_std.append(np.std(update_rate_lam))
+
 
   #   for sim in range(nsimulations):
   #     s = System(W, b, bigX, disturbances[sim], path)
@@ -113,7 +145,7 @@ np.save('ROAs.npy', ROAs)
 
 import matplotlib.pyplot as plt
 
-value_grid = np.arange(0, nlambda)
+value_grid = np.arange(0, nlambda)/nlambda
 
 # # Apply Gaussian filter for smoothing
 # computational_save_smooth = gaussian_filter1d(computational_save, sigma=2)
@@ -124,7 +156,7 @@ value_grid = np.arange(0, nlambda)
 
 plt.plot(value_grid, update_rates_mean, label='Computational save')
 # plt.plot(value_grid, computational_save, label='Computational save')
-# plt.plot(value_grid, ROAs, label='ROA')
+plt.plot(value_grid, ROAs, label='ROA')
 # # plt.plot(value_grid, computational_save_interp, label='Computational save (interpolated)')
 # # plt.plot(value_grid, computational_save_final, label='Computational save (interpolated)')
 plt.xlabel('Lambda')

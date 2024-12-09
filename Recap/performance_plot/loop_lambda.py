@@ -1,17 +1,17 @@
-from LMI import LMI
+from Recap.LMI import LMI
 import os
 import numpy as np
 
 # Weights and bias import
-W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
-W2_name = os.path.abspath(__file__ + "/../weights/W2.csv")
-W3_name = os.path.abspath(__file__ + "/../weights/W3.csv")
-W4_name = os.path.abspath(__file__ + "/../weights/W4.csv")
+W1_name = os.path.abspath(__file__ + "/../../weights/W1.csv")
+W2_name = os.path.abspath(__file__ + "/../../weights/W2.csv")
+W3_name = os.path.abspath(__file__ + "/../../weights/W3.csv")
+W4_name = os.path.abspath(__file__ + "/../../weights/W4.csv")
 
-b1_name = os.path.abspath(__file__ + "/../weights/b1.csv")
-b2_name = os.path.abspath(__file__ + "/../weights/b2.csv")
-b3_name = os.path.abspath(__file__ + "/../weights/b3.csv")
-b4_name = os.path.abspath(__file__ + "/../weights/b4.csv")
+b1_name = os.path.abspath(__file__ + "/../../weights/b1.csv")
+b2_name = os.path.abspath(__file__ + "/../../weights/b2.csv")
+b3_name = os.path.abspath(__file__ + "/../../weights/b3.csv")
+b4_name = os.path.abspath(__file__ + "/../../weights/b4.csv")
 
 W1 = np.loadtxt(W1_name, delimiter=',')
 W2 = np.loadtxt(W2_name, delimiter=',')
@@ -28,29 +28,32 @@ b4 = np.loadtxt(b4_name, delimiter=',')
 
 b = [b1, b2, b3, b4]
 
-path = 'parameters_search'
+path = '../finsler'
 
 # Lmi object creation
-lmi = LMI(W, b)
+lmi = LMI(W, b, path)
 
 # Alpha search 
 # alpha = lmi.search_alpha(1.0, 0.0, 1e-4, 1.0, 1.0, verbose=True)
 # np.save(path + '/alpha.npy', alpha)
-alpha = np.load(path + '/alpha.npy')
+# alpha = np.load(path + '/alpha.npy')
 
 # High gamma serach
-high_gamma = lmi.search_highest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
-np.save(path + '/high_gamma.npy', high_gamma)
+# high_gamma = lmi.search_highest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
+# np.save(path + '/high_gamma.npy', high_gamma)
 
-# Low gamma search
-low_gamma = lmi.search_lowest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
-np.save(path + '/low_gamma.npy', low_gamma)
+# # Low gamma search
+# low_gamma = lmi.search_lowest_gamma(2.0, 0.0, 1e-2, alpha, verbose=True)
+# np.save(path + '/low_gamma.npy', low_gamma)
 
 # Vector of lambda values
 lambdas = np.linspace(0, 1, 50)
 
-i = 0
-for lam in lambdas:
-  lmi.solve(alpha, lam, None, verbose=True, search=False)
-  lmi.save_results(path + f'/lambda_{i}')
-  i += 1
+path = '../fixed_gamma'
+alpha = np.load('../parameters_search/alpha.npy')
+
+# i = 0
+# for lam in lambdas:
+#   lmi.solve(alpha, lam, 1.0, verbose=True, search=True)
+#   lmi.save_results(path + f'/lambda_{i}')
+#   i += 1

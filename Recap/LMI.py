@@ -1,14 +1,14 @@
-from system import System
+from Recap.system import System
 import numpy as np
 import cvxpy as cp
 import warnings
 import os
 
 class LMI():
-  def __init__(self, W, b):
+  def __init__(self, W, b, path):
     
     # Declare system to import values
-    self.system = System(W, b, [], 0.0, 'finsler')
+    self.system = System(W, b, [], 0.0, path)
     self.nx = self.system.nx
     self.nu = self.system.nu
     self.nq = self.system.nq
@@ -278,7 +278,7 @@ class LMI():
 
     # Objective function definition
     # lambda1 parameter controls the trade-off between the trace of P and the epsilon parameter responsible for size of ROA and magnitude of the computational savings
-    self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + (1 - self.lambda1) * self.eps)
+    self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + self.eps)
 
     # Problem definition
     self.prob = cp.Problem(self.objective, self.constraints)
