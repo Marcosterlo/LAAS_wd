@@ -116,11 +116,6 @@ class System():
     # ETM related parameters
     self.eta = np.ones(self.nlayers) * 0.0
     self.rho = np.ones(self.nlayers) * np.load(self.path + '/Rho.npy')[0][0]
-    # self.lambda1 = np.load(self.path + '/lambda1.npy')
-    # self.gammas = np.ones(self.nlayers)
-    # self.gamma_low = np.load(self.path + '/gamma_low.npy')
-    # self.gamma_high = np.load(self.path + '/gamma_high.npy')
-    # self.gammas = np.ones(self.nlayers) * (self.gamma_low + self.lambda1 * (self.gamma_high - self.gamma_low))
 
     # Last output of the neural network for each layer, initialized to arbitrary high value to trigger an event on initialization
     self.last_w = []
@@ -248,14 +243,6 @@ if __name__ == "__main__":
   
   b = [b1, b2, b3, b4]
 
-  # # Old ETM matrices import
-  # Omega1 = np.load('omega_dynamic/Omega1.npy')
-  # Omega2 = np.load('omega_dynamic/Omega2.npy')
-  # Omega3 = np.load('omega_dynamic/Omega3.npy')
-  # Omegas = np.load('omega_dynamic/Omegas.npy')
-
-  # Omega = [Omega1, Omega2, Omega3, Omegas]
-
   # New ETM matrices import
   bigX1 = np.load(path + '/bigX1.npy')
   bigX2 = np.load(path + '/bigX2.npy')
@@ -284,10 +271,6 @@ if __name__ == "__main__":
     theta = np.random.uniform(-np.pi/2, np.pi/2)
     vtheta = np.random.uniform(-s.max_speed, s.max_speed)
     ref = np.random.uniform(-ref_bound, ref_bound)
-
-    # theta = 5.0 * np.pi / 180
-    # vtheta = -0.5
-    # ref = 1 * np.pi / 180
 
     # Initial state definition and system initialization
     x0 = np.array([[theta], [vtheta], [0.0]])
@@ -327,7 +310,10 @@ if __name__ == "__main__":
   nsteps = 0
 
   # Magnitude of the Lyapunov function to stop the simulation
-  lyap_magnitude = 1e-8
+  lyap_magnitude = 1e-20
+
+  # Maximum number of steps to stop the simulation
+  max_steps = 30000
 
   # Simulation loop
   while not stop_run:
@@ -345,7 +331,7 @@ if __name__ == "__main__":
     lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
     
     # Stop condition
-    if lyap[-1] < lyap_magnitude or nsteps > 3000:
+    if lyap[-1] < lyap_magnitude or nsteps > max_steps:
       stop_run = True
 
   # Data processing

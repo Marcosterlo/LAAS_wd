@@ -45,11 +45,6 @@ class LMI():
     # Parameters definition
     self.alpha = cp.Parameter(nonneg=True)
     self.lambda1 = cp.Parameter(nonneg=True)
-    self.gamma_scal = cp.Parameter(nonneg=True)
-
-    # ETM Parameters initialization
-    self.gamma_low = 0.55
-    self.gamma_high = 1.0
 
     # Auxiliary matrices
     self.Abar = self.A + self.B @ self.Rw
@@ -116,7 +111,7 @@ class LMI():
     self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
     
     # Eta dynamics variables
-    eps = cp.Variable(198)
+    eps = cp.Variable(self.nx + self.nphi*2 + self.nq)
     self.eps = cp.diag(eps)
     Rho = cp.Variable(self.nphi)
     self.Rho = cp.diag(Rho)
@@ -238,7 +233,7 @@ class LMI():
 
     self.finsler4 = self.Rsat.T @ (self.bigX4 - self.Omegas + self.bigX4.T - self.Omegas.T) @ self.Rsat + self.N4 @ self.hconstr + self.hconstr.T @ self.N4.T
    
-    # Part regarding the dynamic of ETA with R
+    # Big M matrix definition with components w.r.t. sqrt(eta)
     self.id = np.eye(self.nphi)
     self.new_sec = self.Rho - self.id
     self.bigM = cp.bmat([
@@ -256,7 +251,6 @@ class LMI():
     self.constraints += [self.finsler2 << 0]
     self.constraints += [self.finsler3 << 0]
     self.constraints += [self.finsler4 << 0]
-    self.constraints += [self.new_sec << 0]
     # self.constraints += [self.eps - self.eps_thresh >= 0]
     # self.constraints += [self.Rho + (self.eps - 1) * self.id >> 0]
     # self.constraints += [self.Rho + (self.lambda1 - 1 - self.eps) * self.id << 0]
@@ -287,11 +281,7 @@ class LMI():
   def create_problem(self):
 
     # Objective function definition
-    # lambda1 parameter controls the trade-off between the trace of P and the epsilon parameter responsible for size of ROA and magnitude of the computational savings
-    # self.objective = cp.Minimize(self.lambda1 * cp.trace(self.P) + self.eps)
-    self.objective = cp.Minimize(cp.trace(self.P) + cp.trace(self.eps))
-    # self.objective = cp.Minimize(cp.trace(self.eps))
-    # self.objective = cp.Minimize(cp.trace(self.P))
+    self.objective = cp.Minimize(cp.trace(self.P) + 0.1 * cp.trace(self.eps))
 
     # Problem definition
     self.prob = cp.Problem(self.objective, self.constraints)
@@ -304,15 +294,7 @@ class LMI():
   def solve(self, alpha_val, verbose=False): #, search=False):
     # Parameters update
     self.alpha.value = alpha_val
-    # self.lambda1.value = lambda_val
-    # self.gamma_scal.value = gamma_val
 
-    # If the function is called inside a search algorithm the gamma values is directly updated
-    # if search:
-    #   self.gamma_scal.value = gamma_val
-    # else:
-    #   # If the function is called to solve the LMI, the gamma value computed with respect to lambda and max and min gammas
-    #   self.gamma_scal.value = self.gamma_low + self.lambda1.value * (self.gamma_high - self.gamma_low)
     try:
       self.prob.solve(solver=cp.MOSEK, verbose=True)
     except cp.error.SolverError:
@@ -324,7 +306,6 @@ class LMI():
       if verbose:
         print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
         print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
-        # print(f"Current gamma value: {self.gamma_scal.value}")
         print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(self.P.value))}")
         print(f"Rho value: {np.max(self.Rho.value)}")
       
@@ -373,97 +354,12 @@ class LMI():
         print(f"Current alpha value: {feasible_extreme}\n==================== \n")
     return feasible_extreme
 
-  # Function that searches for the best gamma value wehn priority is given to the size of the ROA
-  def search_highest_gamma(self, highest_gamma, lowest_gamma, threshold, alpha, verbose=False):
-
-    golden_ratio = (1 + np.sqrt(5)) / 2
-    i = 0
-
-    # Loop until the difference between the two extremes is smaller than the threshold or the limit of iterations is reached
-    while (highest_gamma - lowest_gamma > threshold) and i < 101:
-      i += 1
-      gamma1 = highest_gamma - (highest_gamma - lowest_gamma) / golden_ratio
-      gamma2 = lowest_gamma + (highest_gamma - lowest_gamma) / golden_ratio
-      
-      # Solve the LMI for the two gamma values, lambda set to 1 to prioritize the size of the ROA
-      ROA = self.solve(alpha, verbose=False) # , search=True)
-      if ROA is None:
-        val1 = -1
-      else:
-        val1 = ROA
-      
-      ROA = self.solve(alpha, verbose=False) #, search=True)
-      if ROA is None:
-        val2 = -1
-      else:
-        val2 = ROA
-        
-      # Update the highest and lowest extremes
-      if val1 > val2:
-        highest_gamma = gamma1
-      else:
-        lowest_gamma = gamma1
-      
-      if verbose:
-        if val1 > val2:
-          ROA = val1
-        else:
-          ROA = val2
-        print(f"\nIteration number: {i}")
-        print(f"==================== \nCurrent ROA: {ROA}")
-        print(f"Current gamma value: {highest_gamma}\n==================== \n")
-    return highest_gamma
-
-  # Function that searches for the best gamma value wehn priority is given to the reduction of the number of events
-  def search_lowest_gamma(self, highest_gamma, lowest_gamma, threshold, alpha, verbose=False):
-
-    golden_ratio = (1 + np.sqrt(5)) / 2
-    i = 0
-
-    # Loop until the difference between the two extremes is smaller than the threshold or the limit of iterations is reached
-    while (highest_gamma - lowest_gamma > threshold) and i < 101:
-      i += 1
-      gamma1 = highest_gamma - (highest_gamma - lowest_gamma) / golden_ratio
-      gamma2 = lowest_gamma + (highest_gamma - lowest_gamma) / golden_ratio
-      
-      # Solve the LMI for the two gamma values, lambda set to 0 to prioritize the reduction of the number of events
-      ROA = self.solve(alpha, verbose=False) #, search=True)
-      if ROA is None:
-        feas1 = False
-      else:
-        feas1 = True
-      
-      ROA = self.solve(alpha, verbose=False) # , search=True)
-      if ROA is None:
-        feas2 = False
-      else:
-        feas2 = True
-        
-      # Update the highest and lowest extremes
-      if feas2:
-        highest_gamma = gamma2
-      else:
-        lowest_gamma = gamma2
-      
-      if verbose:
-        print(f"\nIteration number: {i}")
-        if feas2:
-          print(f"==================== \nProblem is feasible for gamma = {highest_gamma}")
-        else:
-          print(f"==================== \nProblem is infeasible for gamma = {gamma2}")
-          print(f"Current gamma value: {highest_gamma}")
-        print(f"====================")
-    return highest_gamma
-
   # Function that saves the variables of interest to use in the simulations
   def save_results(self, path_dir: str):
     if not os.path.exists(path_dir):
       os.makedirs(path_dir)
     np.save(f"{path_dir}/P.npy", self.P.value)
     np.save(f"{path_dir}/Rho.npy", self.Rho.value)
-    np.save(f"{path_dir}/lambda1.npy", self.lambda1.value)
-    # np.save(f"{path_dir}/gamma_low.npy", self.gamma_low)
-    # np.save(f"{path_dir}/gamma_high.npy", self.gamma_high)
     np.save(f"{path_dir}/bigX1.npy", self.bigX1.value)
     np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
     np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
@@ -503,7 +399,7 @@ if __name__ == "__main__":
   b = [b1, b2, b3, b4]
 
   # Lmi object creation
-  lmi = LMI(W, b, 'finsler-1')
+  lmi = LMI(W, b, 'new_finsler')
   
   # Alpha search 
   # alpha = lmi.search_alpha(1.0, 0.0, 1e-5, 1.0 verbose=True)
