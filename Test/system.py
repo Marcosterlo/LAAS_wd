@@ -213,9 +213,13 @@ if __name__ == "__main__":
   # path = 'lambda_0.01'
   # path = 'just_eps'
   # path = 'just_P'
-  path = 'both'
-  path = 'new'
-  path = 'new_finsler'
+  # path = 'both'
+  # path = 'new'
+  # path = 'new_finsler'
+  # path = 'min_X'
+  # path = 'no_sigma'
+  # path = 'no_alpha'
+  path = 'verify'
 
   # Weights and biases import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
@@ -310,7 +314,7 @@ if __name__ == "__main__":
   nsteps = 0
 
   # Magnitude of the Lyapunov function to stop the simulation
-  lyap_magnitude = 1e-20
+  lyap_magnitude = 1e-8
 
   # Maximum number of steps to stop the simulation
   max_steps = 30000

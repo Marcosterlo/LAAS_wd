@@ -109,12 +109,21 @@ class LMI():
     self.bigX2 = cp.Variable((self.nbigx2, self.nbigx2))
     self.bigX3 = cp.Variable((self.nbigx3, self.nbigx3))
     self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
+    self.bigX = [self.bigX1, self.bigX2, self.bigX3, self.bigX4]
     
     # Eta dynamics variables
     eps = cp.Variable(self.nx + self.nphi*2 + self.nq)
     self.eps = cp.diag(eps)
     Rho = cp.Variable(self.nphi)
     self.Rho = cp.diag(Rho)
+
+    # ETM minimization variables
+    self.alphax = cp.Variable(self.nlayers, nonneg=True)
+    id1 = np.eye(self.nbigx1)
+    id2 = np.eye(self.nbigx2)
+    id3 = np.eye(self.nbigx3)
+    id4 = np.eye(self.nbigx4)
+    self.eyex = [id1, id2, id3, id4]
   
   # Function that handles all Constraints declarations
   def init_constraints(self):
@@ -251,9 +260,14 @@ class LMI():
     self.constraints += [self.finsler2 << 0]
     self.constraints += [self.finsler3 << 0]
     self.constraints += [self.finsler4 << 0]
-    # self.constraints += [self.eps - self.eps_thresh >= 0]
-    # self.constraints += [self.Rho + (self.eps - 1) * self.id >> 0]
-    # self.constraints += [self.Rho + (self.lambda1 - 1 - self.eps) * self.id << 0]
+
+    # Minimization constraints of X_i for each layer
+    for i in range(self.nlayers):
+      mat = cp.bmat([
+        [-self.alphax[i] * self.eyex[i], self.bigX[i]],
+        [self.bigX[i].T, -self.eyex[i]]
+      ])
+      self.constraints += [mat << 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -280,8 +294,11 @@ class LMI():
   # Function that handles final problem definition
   def create_problem(self):
 
-    # Objective function definition
-    self.objective = cp.Minimize(cp.trace(self.P) + 0.1 * cp.trace(self.eps))
+    # Objective function defined as the sum of the trace of P, eps and the sum of all alphax variables
+    obj = cp.trace(self.P) + cp.trace(self.eps)
+    for i in range(self.nlayers):
+      obj += self.alphax[i]
+    self.objective = cp.Minimize(obj)
 
     # Problem definition
     self.prob = cp.Problem(self.objective, self.constraints)
