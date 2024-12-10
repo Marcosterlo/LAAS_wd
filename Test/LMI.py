@@ -244,7 +244,7 @@ class LMI():
    
     # Big M matrix definition with components w.r.t. sqrt(eta)
     self.id = np.eye(self.nphi)
-    self.new_sec = self.Rho - self.id
+    self.new_sec = 2*(self.Rho - self.id)
     self.bigM = cp.bmat([
       [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
       [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec]
