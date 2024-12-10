@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def ellipsoid_plot_2D(P, plot=True, ax=None, color=None, legend=None):
+def ellipsoid_plot_2D(P, plot=True, ax=None, color=None, offset=None, legend=None):
 
   if color is None:
     color = 'r'
@@ -30,6 +30,7 @@ def ellipsoid_plot_2D(P, plot=True, ax=None, color=None, legend=None):
     ax.set_xlabel('Theta (deg)')
     ax.set_ylabel('V (rad/s)')
     ax.grid(True)
+  
 
     if plot:
       plt.show()
@@ -37,9 +38,15 @@ def ellipsoid_plot_2D(P, plot=True, ax=None, color=None, legend=None):
       return fig, ax
   else:
     if legend:
-      ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4, label=legend)
+      if offset is not None:
+        ax.plot(x_ellipsoid, y_ellipsoid, offset, color=color, alpha=0.4, label=legend)
+      else:
+        ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4, label=legend)
     else:
-      ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4)
+      if offset is not None:
+        ax.plot(x_ellipsoid, y_ellipsoid, offset, color=color, alpha=0.4)
+      else:
+        ax.plot(x_ellipsoid, y_ellipsoid, color=color, alpha=0.4)
     return ax
   
 if __name__ == '__main__':

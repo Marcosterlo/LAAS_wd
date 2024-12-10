@@ -459,13 +459,16 @@ if __name__ == "__main__":
 
   # 3D ROA plot
   fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
+  ellipsoid_plot_2D(P[:2, :2], False, ax, offset=-8, color='b')
+  ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], -8, 'b')
+
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1] - s.xstar[1], states[:, 2] - s.xstar[2], 'b')
   ax.plot(0, 0, 0, marker='o', markersize=5, color='r')
   plt.legend()
   plt.show()
 
   # 2D projection on integrator state star plane of R
-  fig, ax = ellipsoid_plot_2D(P[:2, :2], False, color='b', legend='ROA with dynamic ETM')
+  fig, ax = ellipsoid_plot_2D(P[:2, :2], False, color='b', offset=None, legend='ROA with dynamic ETM')
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], 'b')
   ax.plot(0, 0, marker='o', markersize=5, color='r')
   plt.legend()
