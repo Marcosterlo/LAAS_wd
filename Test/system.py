@@ -456,14 +456,26 @@ if __name__ == "__main__":
 
   from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
   from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
+  from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_2D_projections
 
   # 3D ROA plot
   fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
-  ellipsoid_plot_2D(P[:2, :2], False, ax, offset=-8, color='b')
-  ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], -8, 'b')
+  ellipsoid_plot_2D_projections(P, plane='xy', offset=-8, ax=ax, color='b', legend=None)
+  ellipsoid_plot_2D_projections(P, plane='xz', offset=8, ax=ax, color='b', legend=None)
+  ellipsoid_plot_2D_projections(P, plane='yz', offset=-35, ax=ax, color='b', legend=None)
 
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1] - s.xstar[1], states[:, 2] - s.xstar[2], 'b')
   ax.plot(0, 0, 0, marker='o', markersize=5, color='r')
+
+  ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], -8, 'b')
+  ax.plot(0, 0, -8, marker='o', markersize=5, color='r')
+
+  ax.plot(states[:, 0] - s.xstar[0], 8, states[:, 2]  - s.xstar[2], 'b')
+  ax.plot(0, 8, 0, marker='o', markersize=5, color='r')
+
+  ax.plot(-35, states[:, 1] - s.xstar[1], states[:, 2]  - s.xstar[2], 'b')
+  ax.plot(-35, 0, 0, marker='o', markersize=5, color='r')
+  
   plt.legend()
   plt.show()
 

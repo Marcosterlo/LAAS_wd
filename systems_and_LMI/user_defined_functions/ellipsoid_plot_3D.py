@@ -48,7 +48,54 @@ def ellipsoid_plot_3D(P, plot=True, ax=None, color=None, legend=None):
     else:
       ax.plot_surface(x_ellipsoid, y_ellipsoid, z_ellipsoid, rstride=4, cstride=4, color='r', alpha=0.4, linewidth=0)
     return ax
-  
+
+def ellipsoid_plot_2D_projections(P, plane='xy', offset=0, ax=None, color=None, legend=None):
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    if color is None:
+        color = 'r'
+
+    if plane == 'xy':
+        indices = [0, 1]
+        xlabel, ylabel = 'X', 'Y'
+    elif plane == 'xz':
+        indices = [0, 2]
+        xlabel, ylabel = 'X', 'Z'
+    elif plane == 'yz':
+        indices = [1, 2]
+        xlabel, ylabel = 'Y', 'Z'
+    else:
+        raise ValueError("Plane must be 'xy', 'xz', or 'yz'.")
+
+    P_sub = P[np.ix_(indices, indices)]
+    eigvals, eigvecs = np.linalg.eigh(P_sub)
+    axis_length = 1 / np.sqrt(eigvals)
+
+    # Generate a unit circle and transform it into the ellipsoid's projection
+    theta = np.linspace(0, 2 * np.pi, 500)
+    unit_circle = np.stack((np.cos(theta), np.sin(theta)), axis=-1)
+    projection = unit_circle @ np.diag(axis_length) @ eigvecs.T
+
+    # Plot
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(6, 6))
+    if plane == 'xz' or plane == 'xy':
+      mul = 180/np.pi
+    else:
+      mul = 1
+    if plane == 'xy':
+      ax.plot(projection[:, 0] * mul, projection[:, 1], offset, color=color, label=legend)
+    elif plane == 'xz':
+      ax.plot(projection[:, 0] * mul, offset, projection[:, 1], color=color, label=legend)
+    elif plane == 'yz':
+      ax.plot(offset, projection[:, 0], projection[:, 1], color=color, label=legend)
+
+    if legend:
+        ax.legend()
+
+    if ax is None:
+        plt.show()
   
 if __name__ == '__main__':
 
