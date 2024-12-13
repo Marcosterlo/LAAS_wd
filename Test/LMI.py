@@ -35,6 +35,11 @@ class LMI():
     self.nbigx2 = self.nx + self.neurons[1] * 2
     self.nbigx3 = self.nx + self.neurons[2] * 2
     self.nbigx4 = self.nx + self.neurons[3] * 2
+
+    # Flag variables to determine which kind of LMI has to be solved
+    self.old_trigger = False
+    self.dynamic = False
+    self.optim_finsler = True
     
     # Sign definition of Delta V parameter
     self.m_thres = 1e-6
@@ -79,51 +84,54 @@ class LMI():
     self.Z3 = self.Z[self.neurons[0] + self.neurons[1]:self.neurons[0] + self.neurons[1] + self.neurons[2], :]
     self.Z_sat = cp.reshape(self.Z[-1, :], (self.nu, self.nx))
 
-    # Finsler multipliers, structured to reduce computational burden and different for each layer
-    self.N11 = cp.Variable((self.nx, self.nphi))
-    self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N13 = cp.Variable(self.nphi)
-    self.N13 = cp.diag(N13)
-    self.N1 = cp.vstack([self.N11, self.N12, self.N13])
+    if not self.old_trigger:
+      # Finsler multipliers, structured to reduce computational burden and different for each layer
+      self.N11 = cp.Variable((self.nx, self.nphi))
+      self.N12 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N13 = cp.Variable(self.nphi)
+      self.N13 = cp.diag(N13)
+      self.N1 = cp.vstack([self.N11, self.N12, self.N13])
 
-    self.N21 = cp.Variable((self.nx, self.nphi))
-    self.N22 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N23 = cp.Variable(self.nphi)
-    self.N23 = cp.diag(N23)
-    self.N2 = cp.vstack([self.N21, self.N22, self.N23])
-    
-    self.N31 = cp.Variable((self.nx, self.nphi))
-    self.N32 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N33 = cp.Variable(self.nphi)
-    self.N33 = cp.diag(N33)
-    self.N3 = cp.vstack([self.N31, self.N32, self.N33])
+      self.N21 = cp.Variable((self.nx, self.nphi))
+      self.N22 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N23 = cp.Variable(self.nphi)
+      self.N23 = cp.diag(N23)
+      self.N2 = cp.vstack([self.N21, self.N22, self.N23])
+      
+      self.N31 = cp.Variable((self.nx, self.nphi))
+      self.N32 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N33 = cp.Variable(self.nphi)
+      self.N33 = cp.diag(N33)
+      self.N3 = cp.vstack([self.N31, self.N32, self.N33])
 
-    self.N41 = cp.Variable((self.nx, self.nphi))
-    self.N42 = cp.Variable((self.nphi, self.nphi), symmetric=True)
-    N43 = cp.Variable(self.nphi)
-    self.N43 = cp.diag(N43)
-    self.N4 = cp.vstack([self.N41, self.N42, self.N43])
+      self.N41 = cp.Variable((self.nx, self.nphi))
+      self.N42 = cp.Variable((self.nphi, self.nphi), symmetric=True)
+      N43 = cp.Variable(self.nphi)
+      self.N43 = cp.diag(N43)
+      self.N4 = cp.vstack([self.N41, self.N42, self.N43])
 
-    # New ETM matrices
-    self.bigX1 = cp.Variable((self.nbigx1, self.nbigx1))
-    self.bigX2 = cp.Variable((self.nbigx2, self.nbigx2))
-    self.bigX3 = cp.Variable((self.nbigx3, self.nbigx3))
-    self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
-    self.bigX = [self.bigX1, self.bigX2, self.bigX3, self.bigX4]
+      # New ETM matrices
+      self.bigX1 = cp.Variable((self.nbigx1, self.nbigx1))
+      self.bigX2 = cp.Variable((self.nbigx2, self.nbigx2))
+      self.bigX3 = cp.Variable((self.nbigx3, self.nbigx3))
+      self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
+      self.bigX = [self.bigX1, self.bigX2, self.bigX3, self.bigX4]
     
     # Eta dynamics variables
-    eps = cp.Variable(self.nx + self.nphi*2 + self.nq)
-    self.eps = cp.diag(eps)
-    Rho = cp.Variable(self.nphi)
-    self.Rho = cp.diag(Rho)
-
-    # ETM minimization variables
-    self.alphax = cp.Variable(self.nlayers, nonneg=True)
-    id1 = np.eye(self.nbigx1)
-    id2 = np.eye(self.nbigx2)
-    id3 = np.eye(self.nbigx3)
-    id4 = np.eye(self.nbigx4)
-    self.eyex = [id1, id2, id3, id4]
+    if not self.old_trigger and not self.dynamic:
+      Rho = cp.Variable(self.nphi)
+      self.Rho = cp.diag(Rho)
+      eps = cp.Variable(self.nx + self.nphi*2 + self.nq)
+      self.eps = cp.diag(eps)
+      
+    if self.optim_finsler:
+      # ETM minimization variables
+      self.alphax = cp.Variable(self.nlayers, nonneg=True)
+      id1 = np.eye(self.nbigx1)
+      id2 = np.eye(self.nbigx2)
+      id3 = np.eye(self.nbigx3)
+      id4 = np.eye(self.nbigx4)
+      self.eyex = [id1, id2, id3, id4]
   
   # Function that handles all Constraints declarations
   def init_constraints(self):
@@ -227,47 +235,61 @@ class LMI():
     ])
 
     # Addition of sector conditions to Delta V matrix
-    self.M += -self.Rnu.T @ (self.R1.T @ (self.bigX1 + self.bigX1.T) @ self.R1 + self.R2.T @ (self.bigX2 + self.bigX2.T) @ self.R2 + self.R3.T @ (self.bigX3 + self.bigX3.T) @ self.R3 + self.Rsat.T @ (self.bigX4 + self.bigX4.T) @ self.Rsat) @ self.Rnu
-    # self.M += -self.Rnu.T @ (self.R1.T @ (self.Omega1 + self.Omega1.T) @ self.R1 + self.R2.T @ (self.Omega2 + self.Omega2.T) @ self.R2 + self.R3.T @ (self.Omega3 + self.Omega3.T) @ self.R3 + self.Rsat.T @ (self.Omegas + self.Omegas.T) @ self.Rsat) @ self.Rnu
+    if self.old_trigger:
+      self.M += -self.Rnu.T @ (self.R1.T @ (self.Omega1 + self.Omega1.T) @ self.R1 + self.R2.T @ (self.Omega2 + self.Omega2.T) @ self.R2 + self.R3.T @ (self.Omega3 + self.Omega3.T) @ self.R3 + self.Rsat.T @ (self.Omegas + self.Omegas.T) @ self.Rsat) @ self.Rnu
+    else:
+      self.M += -self.Rnu.T @ (self.R1.T @ (self.bigX1 + self.bigX1.T) @ self.R1 + self.R2.T @ (self.bigX2 + self.bigX2.T) @ self.R2 + self.R3.T @ (self.bigX3 + self.bigX3.T) @ self.R3 + self.Rsat.T @ (self.bigX4 + self.bigX4.T) @ self.Rsat) @ self.Rnu
 
     # Definition of Ker([x, psi, nu]) to add in the finsler constraints
-    self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
+    if not self.old_trigger:
+      self.hconstr = cp.hstack([self.R @ self.Nvx, np.eye(self.R.shape[0]) - self.R, -np.eye(self.nphi)])
 
-    # Finsler constraints for each layer
-    self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
+      # Finsler constraints for each layer
+      self.finsler1 = self.R1.T @ (self.bigX1 - self.Omega1 + self.bigX1.T - self.Omega1.T) @ self.R1 + self.N1 @ self.hconstr + self.hconstr.T @ self.N1.T
 
-    self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
-    
-    self.finsler3 = self.R3.T @ (self.bigX3 - self.Omega3 + self.bigX3.T - self.Omega3.T) @ self.R3 + self.N3 @ self.hconstr + self.hconstr.T @ self.N3.T
+      self.finsler2 = self.R2.T @ (self.bigX2 - self.Omega2 + self.bigX2.T - self.Omega2.T) @ self.R2 + self.N2 @ self.hconstr + self.hconstr.T @ self.N2.T
+      
+      self.finsler3 = self.R3.T @ (self.bigX3 - self.Omega3 + self.bigX3.T - self.Omega3.T) @ self.R3 + self.N3 @ self.hconstr + self.hconstr.T @ self.N3.T
 
-    self.finsler4 = self.Rsat.T @ (self.bigX4 - self.Omegas + self.bigX4.T - self.Omegas.T) @ self.Rsat + self.N4 @ self.hconstr + self.hconstr.T @ self.N4.T
+      self.finsler4 = self.Rsat.T @ (self.bigX4 - self.Omegas + self.bigX4.T - self.Omegas.T) @ self.Rsat + self.N4 @ self.hconstr + self.hconstr.T @ self.N4.T
    
     # Big M matrix definition with components w.r.t. sqrt(eta)
-    self.id = np.eye(self.nphi)
-    self.new_sec = 2*(self.Rho - self.id)
-    self.bigM = cp.bmat([
-      [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
-      [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec]
-    ])
+    if self.dynamic or not self.old_trigger:
+      self.id = np.eye(self.nphi)
+      self.new_sec = 2*(self.Rho - self.id)
+      self.bigM = cp.bmat([
+        [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
+        [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec]
+      ])
     
     # Constraint definition 
     self.constraints = [self.P >> 0]
     self.constraints += [self.T >> 0]
-    self.constraints += [self.eps >> 0]
-    self.constraints += [self.bigM << -self.m_thres * np.eye(self.bigM.shape[0])]
-    self.constraints += [self.bigM + self.eps >> 0]
-    self.constraints += [self.finsler1 << 0]
-    self.constraints += [self.finsler2 << 0]
-    self.constraints += [self.finsler3 << 0]
-    self.constraints += [self.finsler4 << 0]
+    if self.old_trigger:
+      if self.dynamic:
+        self.constraints += [self.Rho >> 0]
+        self.constraints += [self.bigM << -self.m_thres * np.eye(self.bigM.shape[0])]
+        self.constraints += [self.eps >> 0]
+        self.constraints += [self.bigM + self.eps >> 0]
+      else:
+        self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
+    else:
+      self.constraints += [self.bigM << -self.m_thres * np.eye(self.bigM.shape[0])]
+      self.constraints += [self.eps >> 0]
+      self.constraints += [self.bigM + self.eps >> 0]
+      self.constraints += [self.finsler1 << 0]
+      self.constraints += [self.finsler2 << 0]
+      self.constraints += [self.finsler3 << 0]
+      self.constraints += [self.finsler4 << 0]
 
     # Minimization constraints of X_i for each layer
-    for i in range(self.nlayers):
-      mat = cp.bmat([
-        [-self.alphax[i] * self.eyex[i], self.bigX[i]],
-        [self.bigX[i].T, -self.eyex[i]]
-      ])
-      self.constraints += [mat << 0]
+    if self.optim_finsler:
+      for i in range(self.nlayers):
+        mat = cp.bmat([
+          [-self.alphax[i] * self.eyex[i], self.bigX[i]],
+          [self.bigX[i].T, -self.eyex[i]]
+        ])
+        self.constraints += [mat << 0]
     
     # Ellipsoid conditions for activation functions
     for i in range(self.nlayers - 1):
@@ -295,9 +317,13 @@ class LMI():
   def create_problem(self):
 
     # Objective function defined as the sum of the trace of P, eps and the sum of all alphax variables
-    obj = cp.trace(self.P) + cp.trace(self.eps)
-    for i in range(self.nlayers):
-      obj += self.alphax[i]
+    if self.optim_finsler:
+      obj = cp.trace(self.P) + cp.trace(self.eps)
+      for i in range(self.nlayers):
+        obj += self.alphax[i]
+    else:
+      obj = cp.trace(self.P) + cp.trace(self.eps)
+
     self.objective = cp.Minimize(obj)
 
     # Problem definition
@@ -324,7 +350,11 @@ class LMI():
         print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
         print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
         print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(self.P.value))}")
-        print(f"Rho value: {np.max(self.Rho.value)}")
+        if not self.old_trigger:
+          if self.dynamic:
+            print(f"Rho value: {np.max(self.Rho)}")
+          else:
+            print(f"Rho value: {np.max(self.Rho.value)}")
       
       # Returns area of ROA if feasible
       return np.pi/np.sqrt(np.linalg.det(self.P.value))
@@ -376,15 +406,21 @@ class LMI():
     if not os.path.exists(path_dir):
       os.makedirs(path_dir)
     np.save(f"{path_dir}/P.npy", self.P.value)
-    np.save(f"{path_dir}/Rho.npy", self.Rho.value)
-    np.save(f"{path_dir}/bigX1.npy", self.bigX1.value)
-    np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
-    np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
-    np.save(f"{path_dir}/bigX4.npy", self.bigX4.value)
-    # np.save(f"{path_dir}/bigX1.npy", self.Omega1.value)
-    # np.save(f"{path_dir}/bigX2.npy", self.Omega2.value)
-    # np.save(f"{path_dir}/bigX3.npy", self.Omega3.value)
-    # np.save(f"{path_dir}/bigX4.npy", self.Omegas.value)
+    if self.old_trigger:
+      np.save(f"{path_dir}/bigX1.npy", self.Omega1.value)
+      np.save(f"{path_dir}/bigX2.npy", self.Omega2.value)
+      np.save(f"{path_dir}/bigX3.npy", self.Omega3.value)
+      np.save(f"{path_dir}/bigX4.npy", self.Omegas.value)
+      if self.dynamic:
+        np.save(f"{path_dir}/Rho.npy", self.Rho.value)
+      else:
+        np.save(f"{path_dir}/Rho.npy", np.zeros((self.nphi, self.nphi)))
+    else: 
+      np.save(f"{path_dir}/Rho.npy", self.Rho.value)
+      np.save(f"{path_dir}/bigX1.npy", self.bigX1.value)
+      np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
+      np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
+      np.save(f"{path_dir}/bigX4.npy", self.bigX4.value)
       
 # Main loop execution 
 if __name__ == "__main__":

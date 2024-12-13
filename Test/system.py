@@ -206,20 +206,10 @@ class System():
 if __name__ == "__main__":
   import os
 
-  # path = 'finsler-0.5'
-  # path = 'finsler-1'
-  # path = 'finsler-0'
-  # path = 'weights/lambda_1.0'
-  # path = 'lambda_0.01'
-  # path = 'just_eps'
-  # path = 'just_P'
-  # path = 'both'
-  # path = 'new'
-  # path = 'new_finsler'
-  # path = 'min_X'
-  # path = 'no_sigma'
-  # path = 'no_alpha'
-  path = 'verify'
+  # path = 'static'
+  # path = 'dynamic'
+  # path = 'finsler'
+  path = 'optim'
 
   # Weights and biases import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
@@ -296,8 +286,7 @@ if __name__ == "__main__":
 
       print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
       print(f"Initial eta0: {eta0:.2f}")
-
-
+ 
   # Simulation loop
   
   # Empty lists to store the values of the simulation
@@ -332,7 +321,10 @@ if __name__ == "__main__":
     inputs.append(u)
     events.append(e)
     etas.append(eta)
-    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
+    if path == 'static':
+      lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
+    else:
+      lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
     
     # Stop condition
     if lyap[-1] < lyap_magnitude or nsteps > max_steps:
@@ -440,16 +432,17 @@ if __name__ == "__main__":
   plt.show()
 
   # Eta plots
-  plt.plot(timegrid, etas[:, 0], label='Eta_1')
-  plt.plot(timegrid, etas[:, 1], label='Eta_2')
-  plt.plot(timegrid, etas[:, 2], label='Eta_3')
-  plt.plot(timegrid, etas[:, 3], label='Eta_4')
-  plt.legend()
-  plt.grid(True)
-  plt.show()
+  if path != 'static':
+    plt.plot(timegrid, etas[:, 0], label='Eta_1')
+    plt.plot(timegrid, etas[:, 1], label='Eta_2')
+    plt.plot(timegrid, etas[:, 2], label='Eta_3')
+    plt.plot(timegrid, etas[:, 3], label='Eta_4')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
   # Lyapunov function plot
-  plt.plot(timegrid, np.log(lyap), label='Lyapunov function')
+  plt.plot(timegrid, lyap, label='Lyapunov function')
   plt.legend()
   plt.grid(True)
   plt.show()
