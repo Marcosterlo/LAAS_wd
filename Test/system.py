@@ -206,9 +206,6 @@ class System():
 if __name__ == "__main__":
   import os
 
-  # path = 'static'
-  # path = 'dynamic'
-  # path = 'finsler'
   path = 'optim'
 
   # Weights and biases import
@@ -251,95 +248,62 @@ if __name__ == "__main__":
   # P matrix import for lyapunov function
   P = np.load(path + '/P.npy')
   volume = 4/3*np.pi/np.sqrt(np.linalg.det(P))
-
   print(f"Volume of ellipsoid: {volume:.2f}")
 
   # Maximum disturbance bound on the position theta in degrees
   ref_bound = 5 * np.pi / 180
 
-  # Flag to check if the initial state is inside the ellipsoid
-  in_ellip = False
+  # Flag to decide wether start in a random initial configuration such that the initial state is inside the ellipsoid or not
+  random_start = False
 
   # Loop to find a random initial state inside the ellipsoid
-  while not in_ellip:
-    # Random initial state and disturbance
-    theta = np.random.uniform(-np.pi/2, np.pi/2)
-    vtheta = np.random.uniform(-s.max_speed, s.max_speed)
-    ref = np.random.uniform(-ref_bound, ref_bound)
+  if random_start:
 
-    # Initial state definition and system initialization
+    # Flag to check if the initial state is inside the ellipsoid
+    in_ellip = False
+
+    while not in_ellip:
+      # Random initial state and disturbance
+      theta = np.random.uniform(-np.pi/2, np.pi/2)
+      vtheta = np.random.uniform(-s.max_speed, s.max_speed)
+      ref = np.random.uniform(-ref_bound, ref_bound)
+
+      # Initial state definition and system initialization
+      x0 = np.array([[theta], [vtheta], [0.0]])
+      s = System(W, b, bigX, ref, path)
+
+      # Check if the initial state is inside the ellipsoid
+      if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
+
+        # Initial eta0 computation with respect to the initial state
+        eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
+        
+        # Initial eta0 value update in the system
+        s.eta = np.ones(s.nlayers) * eta0
+        
+        # Initial state update in the system
+        s.state = x0
+
+        # Flag variable update to stop the search
+        in_ellip = True
+
+  
+  # Fixed initial condition
+  else:
+    theta = -9.43 * np.pi / 180
+    vtheta = 5.77
+    ref = 2.76 * np.pi / 180
+    eta0 = 0.01
+
     x0 = np.array([[theta], [vtheta], [0.0]])
     s = System(W, b, bigX, ref, path)
+    s.state = x0
+    s.eta = np.ones(s.nlayers) * eta0
 
-    # Check if the initial state is inside the ellipsoid
-    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
-      # Initial eta0 computation with respect to the initial state
-      eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
-      
-      # Flag variable update to stop the search
-      in_ellip = True
-      
-      # Initial eta0 value update in the system
-      s.eta = np.ones(s.nlayers) * eta0
-      
-      # Initial state update in the system
-      s.state = x0
-
-      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
-      print(f"Initial eta0: {eta0:.2f}")
+  print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant disturance = {ref*180/np.pi:.2f} deg")
+  print(f"Initial eta0: {eta0:.2f}")
  
-  # Simulation loops
-
-  # init_configs = np.load('init_configs.npy')
- 
-  # for config in init_configs:
-  #   theta, vtheta, ref, eta0 = config
-  #   x0 = np.array([[theta], [vtheta], [0.0]])
-  #   s = System(W, b, bigX, ref, path)
-  #   s.state = x0
-  #   s.eta = np.ones(s.nlayers) * eta0
-
-  #   events = []
-  #   update_rates = []
-  #   lyap = []
-  #   steps = []
-  #   in_loop = True
-  #   lyap_magnitude = 1e-15
-  #   max_steps = 20000
-  #   nsteps = 0
-
-  #   # Simulation loop
-  #   while in_loop:
-  #     nsteps += 1
-  #     state, _, e, eta = s.step()
-  #     events.append(e)
-  #     if path == 'static':
-  #       lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
-  #     else:
-  #       lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
-  #     # Stop condition
-  #     if lyap[-1] < lyap_magnitude or nsteps > max_steps:
-  #       in_loop = False
-
-  #   events = np.array(events).squeeze()
-  #   steps.append(nsteps)
-  #   layer1_trigger = np.sum(events[:, 0]) / nsteps * 100
-  #   layer2_trigger = np.sum(events[:, 1]) / nsteps * 100
-  #   layer3_trigger = np.sum(events[:, 2]) / nsteps * 100
-  #   layer4_trigger = np.sum(events[:, 3]) / nsteps * 100
-  #   total_trigger = (layer1_trigger * s.neurons[0] + layer2_trigger * s.neurons[1] + layer3_trigger * s.neurons[2] + layer4_trigger * s.neurons[3]) / (s.nphi)
-  #   update_rates.append([layer1_trigger, layer2_trigger, layer3_trigger, layer4_trigger, total_trigger])
-
-  # steps = np.mean(np.array(steps).squeeze())
-  # mean_rates = np.mean(update_rates, axis=0)
-  # print(path + f" average number of steps: {steps:.2f}")
-  # print(path + f" layer update rates: {mean_rates[0]:.2f}, {mean_rates[1]:.2f}, {mean_rates[2]:.2f}, {mean_rates[3]:.2f}")
-  # print(path + f" total update rate: {mean_rates[-1]:.2f}")
-
-  # np.save(path + '_steps.npy', steps)
-  # np.save(path + '_update_rates.npy', mean_rates)
-  # np.save(path + '_volume.npy', volume)
-
+  # Simulation loop
   # Empty lists to store the values of the simulation
   states = []
   inputs = []
@@ -354,7 +318,7 @@ if __name__ == "__main__":
   nsteps = 0
 
   # Magnitude of the Lyapunov function to stop the simulation
-  lyap_magnitude = 1e-8
+  lyap_magnitude = 1e-15
 
   # Maximum number of steps to stop the simulation
   max_steps = 30000
@@ -372,10 +336,7 @@ if __name__ == "__main__":
     inputs.append(u)
     events.append(e)
     etas.append(eta)
-    if path == 'static':
-      lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
-    else:
-      lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
+    lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
     
     # Stop condition
     if lyap[-1] < lyap_magnitude or nsteps > max_steps:
@@ -440,93 +401,102 @@ if __name__ == "__main__":
       
   import matplotlib.pyplot as plt
 
-  # Control input plot
-  fig, axs = plt.subplots(4, 1)
-  axs[0].plot(timegrid, inputs, label='Control input')
-  axs[0].plot(timegrid, inputs * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # Ustar plot
-  axs[0].plot(timegrid, np.squeeze(timegrid * 0 + s.ustar * s.max_torque), 'r--')
-  axs[0].set_xlabel('Time steps')
-  axs[0].set_ylabel('Values')
-  axs[0].legend()
-  axs[0].grid(True)
+  # # Control input plot
+  # fig, axs = plt.subplots(4, 1)
+  # axs[0].plot(timegrid, inputs, label='Control input')
+  # axs[0].plot(timegrid, inputs * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # # Ustar plot
+  # axs[0].plot(timegrid, np.squeeze(timegrid * 0 + s.ustar * s.max_torque), 'r--')
+  # axs[0].set_xlabel('Time steps')
+  # axs[0].set_ylabel('Values')
+  # axs[0].legend()
+  # axs[0].grid(True)
 
-  # Theta plot
-  axs[1].plot(timegrid, states[:, 0], label='Position')
-  axs[1].plot(timegrid, states[:, 0] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # Theta star plot
-  axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
-  axs[1].set_xlabel('Time steps')
-  axs[1].set_ylabel('Values')
-  axs[1].legend()
-  axs[1].grid(True)
+  # # Theta plot
+  # axs[1].plot(timegrid, states[:, 0], label='Position')
+  # axs[1].plot(timegrid, states[:, 0] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # # Theta star plot
+  # axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
+  # axs[1].set_xlabel('Time steps')
+  # axs[1].set_ylabel('Values')
+  # axs[1].legend()
+  # axs[1].grid(True)
 
-  # V plot
-  axs[2].plot(timegrid, states[:, 1], label='Velocity')
-  axs[2].plot(timegrid, states[:, 1] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # V star plot
-  axs[2].plot(timegrid, timegrid * 0 + s.xstar[1], 'r--')
-  axs[2].set_xlabel('Time steps')
-  axs[2].set_ylabel('Values')
-  axs[2].legend()
-  axs[2].grid(True)
+  # # V plot
+  # axs[2].plot(timegrid, states[:, 1], label='Velocity')
+  # axs[2].plot(timegrid, states[:, 1] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # # V star plot
+  # axs[2].plot(timegrid, timegrid * 0 + s.xstar[1], 'r--')
+  # axs[2].set_xlabel('Time steps')
+  # axs[2].set_ylabel('Values')
+  # axs[2].legend()
+  # axs[2].grid(True)
 
-  # Integrator state plot
-  axs[3].plot(timegrid, states[:, 2], label='Integrator state')
-  axs[3].plot(timegrid, states[:, 2] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # Integrator state star plot
-  axs[3].plot(timegrid, timegrid * 0 + s.xstar[2], 'r--')
-  axs[3].set_xlabel('Time steps')
-  axs[3].set_ylabel('Values')
-  axs[3].legend()
-  axs[3].grid(True)
-  plt.show()
+  # # Integrator state plot
+  # axs[3].plot(timegrid, states[:, 2], label='Integrator state')
+  # axs[3].plot(timegrid, states[:, 2] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # # Integrator state star plot
+  # axs[3].plot(timegrid, timegrid * 0 + s.xstar[2], 'r--')
+  # axs[3].set_xlabel('Time steps')
+  # axs[3].set_ylabel('Values')
+  # axs[3].legend()
+  # axs[3].grid(True)
+  # plt.show()
 
-  # Eta plots
-  if path != 'static':
-    plt.plot(timegrid, etas[:, 0], label='Eta_1')
-    plt.plot(timegrid, etas[:, 1], label='Eta_2')
-    plt.plot(timegrid, etas[:, 2], label='Eta_3')
-    plt.plot(timegrid, etas[:, 3], label='Eta_4')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+  # # Eta plots
+  # eta_cut = 600
+  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 0], label=r'$\eta^1$')
+  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 1], label=r'$\eta^2$')
+  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 2], label=r'$\eta^3$')
+  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 3], label=r'$\eta^4$')
+  # plt.legend(fontsize=14)
+  # plt.grid(True)
+  # plt.show()
 
-  # Lyapunov function plot
-  plt.plot(timegrid, lyap, label='Lyapunov function')
-  plt.legend()
-  plt.grid(True)
-  plt.show()
 
-  from systems_and_LMI.user_defined_functions.ellipsoid_plot_2D import ellipsoid_plot_2D
-  from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_3D
-  from systems_and_LMI.user_defined_functions.ellipsoid_plot_3D import ellipsoid_plot_2D_projections
+  # plt.stem(timegrid[100:200], events[100:200, 3]*4, label='Output layer', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
+  # plt.stem(timegrid[100:200], events[100:200, 2]*3, label='Layer 3', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
+  # plt.stem(timegrid[100:200], events[100:200, 1]*2, label='Layer 2', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
+  # plt.stem(timegrid[100:200], events[100:200, 0]*1, label='Layer 1', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
+  # plt.xlabel('Time steps')
+  # plt.ylabel('Event')
+  # plt.legend()
+  # plt.grid(True)
+  # plt.show()
 
+  # # Lyapunov function plot
+  # lyap_diff = lyap_diff[:999]
+  # plt.plot(timegrid[1:1000], timegrid[1:1000] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
+  # plt.plot(timegrid[:999], lyap[:999], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
+  # plt.xlabel('Time steps', fontsize=14)
+  # plt.legend(fontsize=14)
+  # plt.grid(True)
+  # plt.show()
+
+  # Ellipsoid plot
+  from Test.auxiliary_code.ellipsoids import ellipsoid_plot_3D
+  from Test.auxiliary_code.ellipsoids import ellipsoid_plot_2D_projections
   # 3D ROA plot
-  fig, ax = ellipsoid_plot_3D(P, False, color='b', legend='ROA with dynamic ETM')
-  ellipsoid_plot_2D_projections(P, plane='xy', offset=-8, ax=ax, color='b', legend=None)
+  fig, ax = ellipsoid_plot_3D(P, False, color='r', legend=r'ROA approximation $\mathcal{E}(P, x_*)$')
+  ellipsoid_plot_2D_projections(P, plane='xy', offset=-8, ax=ax, color='b', legend=r'Projections of $\mathcal{E}(P, x_*)$')
   ellipsoid_plot_2D_projections(P, plane='xz', offset=8, ax=ax, color='b', legend=None)
   ellipsoid_plot_2D_projections(P, plane='yz', offset=-35, ax=ax, color='b', legend=None)
 
+  ax.plot(states[0, 0] - s.xstar[0], states[0, 1] - s.xstar[1], states[0, 2] - s.xstar[2], marker='o', markersize=5, color='g', label='Initial point')
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1] - s.xstar[1], states[:, 2] - s.xstar[2], 'b')
-  ax.plot(0, 0, 0, marker='o', markersize=5, color='r')
+  ax.plot(0, 0, 0, marker='o', markersize=5, color='r', label='Equilibrium point')
 
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], -8, 'b')
   ax.plot(0, 0, -8, marker='o', markersize=5, color='r')
+  # ax.plot(states[0, 0] - s.xstar[0], states[0, 1] - s.xstar[1], -8, marker='o', markersize=5, color='g')
 
   ax.plot(states[:, 0] - s.xstar[0], 8, states[:, 2]  - s.xstar[2], 'b')
   ax.plot(0, 8, 0, marker='o', markersize=5, color='r')
+  # ax.plot(states[0, 0] - s.xstar[0], 8, states[0, 2] - s.xstar[2], marker='o', markersize=5, color='g')
 
   ax.plot(-35, states[:, 1] - s.xstar[1], states[:, 2]  - s.xstar[2], 'b')
   ax.plot(-35, 0, 0, marker='o', markersize=5, color='r')
+  # ax.plot(-35, states[0, 1] - s.xstar[1], states[0, 2] - s.xstar[2], marker='o', markersize=5, color='g')
   
-  plt.legend()
-  plt.show()
-
-  # 2D projection on integrator state star plane of R
-  fig, ax = plt.subplots()
-  ellipsoid_plot_2D_projections(P, plane='xy', offset=0, ax=ax, color='b', legend='ROA with dynamic ETM')
-  ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], 'b')
-  ax.plot(0, 0, marker='o', markersize=5, color='r')
-  plt.legend()
+  plt.legend(fontsize=14)
   plt.show()
