@@ -1,19 +1,19 @@
 import numpy as np  
-from system import System
+from Test.system import System
 import os
 
-path = 'dynamic'
+path = '../dynamic'
 
 # Weights and biases import
-W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
-W2_name = os.path.abspath(__file__ + "/../weights/W2.csv")
-W3_name = os.path.abspath(__file__ + "/../weights/W3.csv")
-W4_name = os.path.abspath(__file__ + "/../weights/W4.csv")
+W1_name = os.path.abspath(__file__ + "/../../weights/W1.csv")
+W2_name = os.path.abspath(__file__ + "/../../weights/W2.csv")
+W3_name = os.path.abspath(__file__ + "/../../weights/W3.csv")
+W4_name = os.path.abspath(__file__ + "/../../weights/W4.csv")
 
-b1_name = os.path.abspath(__file__ + "/../weights/b1.csv")
-b2_name = os.path.abspath(__file__ + "/../weights/b2.csv")
-b3_name = os.path.abspath(__file__ + "/../weights/b3.csv")
-b4_name = os.path.abspath(__file__ + "/../weights/b4.csv")
+b1_name = os.path.abspath(__file__ + "/../../weights/b1.csv")
+b2_name = os.path.abspath(__file__ + "/../../weights/b2.csv")
+b3_name = os.path.abspath(__file__ + "/../../weights/b3.csv")
+b4_name = os.path.abspath(__file__ + "/../../weights/b4.csv")
 
 W1 = np.loadtxt(W1_name, delimiter=',')
 W2 = np.loadtxt(W2_name, delimiter=',')
@@ -41,7 +41,7 @@ bigX = [bigX1, bigX2, bigX3, bigX4]
 # System initialization
 s = System(W, b, bigX, 0.0, path)
 
-P = np.load('dynamic/P.npy')
+P = np.load(path + '/P.npy')
 
 print(f"Volume of ellipsoid: {4/3*np.pi/np.sqrt(np.linalg.det(P)):.2f}")
 
@@ -74,8 +74,8 @@ for i in range(20):
       
       initial_configs.append((theta, vtheta, ref, eta0)) 
 
-      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant reference = {ref*180/np.pi:.2f} deg")
+      print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant disturbance = {ref*180/np.pi:.2f} deg")
       print(f"Initial eta0: {eta0:.2f}")
 
 initial_configs = np.array(initial_configs).squeeze()
-np.save('init_configs.npy', initial_configs)
+# np.save('init_configs.npy', initial_configs)
