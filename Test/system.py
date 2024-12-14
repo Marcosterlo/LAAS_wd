@@ -473,7 +473,7 @@ if __name__ == "__main__":
 
   # Loop through the layers and plot the stems
   for i in range(4):
-      ax.stem(np.arange(event_cut), plot_events[:, i], linefmt=colors[i] + body[i], markerfmt=colors[i] + heads[i], basefmt="", label=f'Layer {i+1}')
+      ax.stem(np.arange(event_cut), plot_events[:, i], linefmt=colors[i] + body[i], markerfmt=colors[i] + heads[i], basefmt="", label=f'ETM {i+1}')
 
   # Display the plot
   plt.ylim(0, 5)
