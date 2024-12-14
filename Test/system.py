@@ -462,7 +462,7 @@ if __name__ == "__main__":
   # heads = ['s', 'd', 'x', 'v']
 
   # # Create a figure
-  # fig, ax = plt.subplots(figsize=(10, 4))
+  # fig, ax = plt.subplots(figsize=(11, 4))
 
   # plot_events = events[:event_cut]
 
@@ -472,14 +472,16 @@ if __name__ == "__main__":
 
   # plot_events = plot_events[::-1]
 
-  # # Loop through the layers and plot the stems
-  # for i in range(4):
-  #     ax.stem(np.arange(event_cut), plot_events[:, i], linefmt=colors[i] + body[i], markerfmt=colors[i] + heads[i], basefmt="", label=f'ETM {i+1}')
+  # ax.stem(np.arange(event_cut), plot_events[:, 3], linefmt=colors[3] + body[3], markerfmt=colors[3] + heads[3], basefmt="", label=f'ETM {1}')
+  # ax.stem(np.arange(event_cut), plot_events[:, 2], linefmt=colors[2] + body[2], markerfmt=colors[2] + heads[2], basefmt="", label=f'ETM {2}')
+  # ax.stem(np.arange(event_cut), plot_events[:, 1], linefmt=colors[1] + body[1], markerfmt=colors[1] + heads[1], basefmt="", label=f'ETM {3}')
+  # ax.stem(np.arange(event_cut), plot_events[:, 0], linefmt=colors[0] + body[0], markerfmt=colors[0] + heads[0], basefmt="", label=f'ETM {4}')
 
   # # Display the plot
   # plt.ylim(0, 5)
   # plt.xlabel('Time steps', fontsize=14)
   # plt.legend(fontsize=14, loc='upper center', ncol=4)
+  # plt.grid(True)
   # plt.show()
 
   # # Lyapunov function plot
