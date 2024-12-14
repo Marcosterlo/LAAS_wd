@@ -401,77 +401,94 @@ if __name__ == "__main__":
       
   import matplotlib.pyplot as plt
 
-  # # Control input plot
-  # fig, axs = plt.subplots(4, 1)
-  # axs[0].plot(timegrid, inputs, label='Control input')
-  # axs[0].plot(timegrid, inputs * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # # Ustar plot
-  # axs[0].plot(timegrid, np.squeeze(timegrid * 0 + s.ustar * s.max_torque), 'r--')
-  # axs[0].set_xlabel('Time steps')
-  # axs[0].set_ylabel('Values')
-  # axs[0].legend()
-  # axs[0].grid(True)
+  # Control input plot
+  plot_cut = 600
+  fig, axs = plt.subplots(4, 1, figsize=(10, 8))
+  axs[0].plot(timegrid[:plot_cut], inputs[:plot_cut], label='Control input')
+  axs[0].plot(timegrid[:plot_cut], inputs[:plot_cut] * events[:plot_cut, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # Ustar plot
+  axs[0].plot(timegrid[:plot_cut], np.squeeze(timegrid[:plot_cut] * 0 + s.ustar * s.max_torque), 'r--')
+  axs[0].set_xlabel('Time steps',fontsize=14)
+  axs[0].set_ylabel(r'Torque (N m)',fontsize=14)
+  axs[0].legend(fontsize=14)
+  axs[0].grid(True)
 
-  # # Theta plot
-  # axs[1].plot(timegrid, states[:, 0], label='Position')
-  # axs[1].plot(timegrid, states[:, 0] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # # Theta star plot
-  # axs[1].plot(timegrid, timegrid * 0 + s.xstar[0], 'r--')
-  # axs[1].set_xlabel('Time steps')
-  # axs[1].set_ylabel('Values')
-  # axs[1].legend()
-  # axs[1].grid(True)
+  # Theta plot
+  axs[1].plot(timegrid[:plot_cut], states[:plot_cut, 0], label='Position')
+  axs[1].plot(timegrid[:plot_cut], states[:plot_cut, 0] * events[:plot_cut, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # Theta star plot
+  axs[1].plot(timegrid[:plot_cut], timegrid[:plot_cut] * 0 + s.xstar[0], 'r--')
+  axs[1].set_xlabel('Time steps',fontsize=14)
+  axs[1].set_ylabel(r'$\theta$ (deg)',fontsize=14)
+  axs[1].legend(fontsize=14)
+  axs[1].grid(True)
 
-  # # V plot
-  # axs[2].plot(timegrid, states[:, 1], label='Velocity')
-  # axs[2].plot(timegrid, states[:, 1] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # # V star plot
-  # axs[2].plot(timegrid, timegrid * 0 + s.xstar[1], 'r--')
-  # axs[2].set_xlabel('Time steps')
-  # axs[2].set_ylabel('Values')
-  # axs[2].legend()
-  # axs[2].grid(True)
+  # V plot
+  axs[2].plot(timegrid[:plot_cut], states[:plot_cut, 1], label='Velocity')
+  axs[2].plot(timegrid[:plot_cut], states[:plot_cut, 1] * events[:plot_cut, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # V star plot
+  axs[2].plot(timegrid[:plot_cut], timegrid[:plot_cut] * 0 + s.xstar[1], 'r--')
+  axs[2].set_xlabel('Time steps',fontsize=14)
+  axs[2].set_ylabel(r'$\dot \theta$ (rad/s)',fontsize=14)
+  axs[2].legend(fontsize=14)
+  axs[2].grid(True)
 
-  # # Integrator state plot
-  # axs[3].plot(timegrid, states[:, 2], label='Integrator state')
-  # axs[3].plot(timegrid, states[:, 2] * events[:, 3], marker='o', markerfacecolor='none', linestyle='None')
-  # # Integrator state star plot
-  # axs[3].plot(timegrid, timegrid * 0 + s.xstar[2], 'r--')
-  # axs[3].set_xlabel('Time steps')
-  # axs[3].set_ylabel('Values')
-  # axs[3].legend()
-  # axs[3].grid(True)
-  # plt.show()
+  # Integrator state plot
+  axs[3].plot(timegrid[:plot_cut], states[:plot_cut, 2], label='Integrator state')
+  axs[3].plot(timegrid[:plot_cut], states[:plot_cut, 2] * events[:plot_cut, 3], marker='o', markerfacecolor='none', linestyle='None')
+  # Integrator state star plot
+  axs[3].plot(timegrid[:plot_cut], timegrid[:plot_cut] * 0 + s.xstar[2], 'r--')
+  axs[3].set_xlabel('Time steps',fontsize=14)
+  axs[3].set_ylabel(r'z',fontsize=14)
+  axs[3].legend(fontsize=14)
+  axs[3].grid(True)
+  plt.show()
 
-  # # Eta plots
-  # eta_cut = 600
-  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 0], label=r'$\eta^1$')
-  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 1], label=r'$\eta^2$')
-  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 2], label=r'$\eta^3$')
-  # plt.plot(timegrid[:eta_cut], etas[:eta_cut, 3], label=r'$\eta^4$')
-  # plt.legend(fontsize=14)
-  # plt.grid(True)
-  # plt.show()
+  # Eta plots
+  eta_cut = 600
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 0], label=r'$\eta^1$')
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 1], label=r'$\eta^2$')
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 2], label=r'$\eta^3$')
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 3], label=r'$\eta^4$')
+  plt.legend(fontsize=14)
+  plt.grid(True)
+  plt.show()
 
 
-  # plt.stem(timegrid[100:200], events[100:200, 3]*4, label='Output layer', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
-  # plt.stem(timegrid[100:200], events[100:200, 2]*3, label='Layer 3', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
-  # plt.stem(timegrid[100:200], events[100:200, 1]*2, label='Layer 2', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
-  # plt.stem(timegrid[100:200], events[100:200, 0]*1, label='Layer 1', linefmt='C0-', markerfmt='C0o', basefmt='C0-')
-  # plt.xlabel('Time steps')
-  # plt.ylabel('Event')
-  # plt.legend()
-  # plt.grid(True)
-  # plt.show()
+  event_cut = 300
+  colors = ['r', 'g', 'b', 'c']
+  body = [':', '-.', '--', '-']
+  heads = ['s', 'd', 'x', 'v']
 
-  # # Lyapunov function plot
-  # lyap_diff = lyap_diff[:999]
-  # plt.plot(timegrid[1:1000], timegrid[1:1000] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
-  # plt.plot(timegrid[:999], lyap[:999], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
-  # plt.xlabel('Time steps', fontsize=14)
-  # plt.legend(fontsize=14)
-  # plt.grid(True)
-  # plt.show()
+  # Create a figure
+  fig, ax = plt.subplots(figsize=(10, 4))
+
+  plot_events = events[:event_cut]
+
+  plot_events[:, 1] *= 2 
+  plot_events[:, 2] *= 3
+  plot_events[:, 3] *= 4
+
+  plot_events = plot_events[::-1]
+
+  # Loop through the layers and plot the stems
+  for i in range(4):
+      ax.stem(np.arange(event_cut), plot_events[:, i], linefmt=colors[i] + body[i], markerfmt=colors[i] + heads[i], basefmt="", label=f'Layer {i+1}')
+
+  # Display the plot
+  plt.ylim(0, 5)
+  plt.xlabel('Time steps', fontsize=14)
+  plt.legend(fontsize=14, loc='upper center', ncol=4)
+  plt.show()
+
+  # Lyapunov function plot
+  lyap_diff = lyap_diff[:999]
+  plt.plot(timegrid[1:1000], timegrid[1:1000] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
+  plt.plot(timegrid[:999], lyap[:999], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
+  plt.xlabel('Time steps', fontsize=14)
+  plt.legend(fontsize=14)
+  plt.grid(True)
+  plt.show()
 
   # Ellipsoid plot
   from Test.auxiliary_code.ellipsoids import ellipsoid_plot_3D
