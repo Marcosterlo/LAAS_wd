@@ -497,29 +497,29 @@ if __name__ == "__main__":
   from Test.auxiliary_code.ellipsoids import ellipsoid_plot_3D
   from Test.auxiliary_code.ellipsoids import ellipsoid_plot_2D_projections
   # 3D ROA plot
-  fig, ax = ellipsoid_plot_3D(P, False, color='orange', legend=r'ROA approximation $\mathcal{E}(P, x_*)$')
+  fig, ax = ellipsoid_plot_3D(P, False, color='yellow', legend=r'ROA approximation $\mathcal{E}(P, x_*)$')
   ellipsoid_plot_2D_projections(P, plane='xy', offset=-8, ax=ax, color='b', legend=r'Projections of $\mathcal{E}(P, x_*)$')
   ellipsoid_plot_2D_projections(P, plane='xz', offset=8, ax=ax, color='b', legend=None)
   ellipsoid_plot_2D_projections(P, plane='yz', offset=-35, ax=ax, color='b', legend=None)
 
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1] - s.xstar[1], states[:, 2] - s.xstar[2], 'b')
-  ax.plot(states[0, 0] - s.xstar[0], states[0, 1] - s.xstar[1], states[0, 2] - s.xstar[2], marker='o', markersize=5, color='g')
+  ax.plot(states[0, 0] - s.xstar[0], states[0, 1] - s.xstar[1], states[0, 2] - s.xstar[2], marker='o', markersize=5, color='c')
   ax.plot(0, 0, 0, marker='o', markersize=5, color='r', label='Equilibrium point')
 
 
   ax.plot(states[:, 0] - s.xstar[0], states[:, 1]  - s.xstar[1], -8, 'b')
   ax.plot(0, 0, -8, marker='o', markersize=5, color='r')
-  ax.plot(states[0, 0] - s.xstar[0], states[0, 1] - s.xstar[1], -8, marker='o', markersize=2, color='g', label='Initial point')
+  ax.plot(states[0, 0] - s.xstar[0], states[0, 1] - s.xstar[1], -8, marker='o', markersize=5, color='c', label='Initial point')
   # ax.plot(states[0, 0] - s.xstar[0], states[0, 1] - s.xstar[1], -8, marker='o', markersize=5, color='g')
 
   ax.plot(states[:, 0] - s.xstar[0], 8, states[:, 2]  - s.xstar[2], 'b')
   ax.plot(0, 8, 0, marker='o', markersize=5, color='r')
-  ax.plot(states[0, 0] - s.xstar[0], 8, states[0, 2] - s.xstar[2], marker='o', markersize=2, color='g')
+  ax.plot(states[0, 0] - s.xstar[0], 8, states[0, 2] - s.xstar[2], marker='o', markersize=5, color='c')
   # ax.plot(states[0, 0] - s.xstar[0], 8, states[0, 2] - s.xstar[2], marker='o', markersize=5, color='g')
 
   ax.plot(-35, states[:, 1] - s.xstar[1], states[:, 2]  - s.xstar[2], 'b')
   ax.plot(-35, 0, 0, marker='o', markersize=5, color='r')
-  ax.plot(-35, states[0, 1] - s.xstar[1], states[0, 2] - s.xstar[2], marker='o', markersize=2, color='g')
+  ax.plot(-35, states[0, 1] - s.xstar[1], states[0, 2] - s.xstar[2], marker='o', markersize=5, color='c')
   # ax.plot(-35, states[0, 1] - s.xstar[1], states[0, 2] - s.xstar[2], marker='o', markersize=5, color='g')
   
   plt.legend(fontsize=14)
