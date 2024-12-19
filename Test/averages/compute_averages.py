@@ -3,9 +3,20 @@ import numpy as np
 from Test.system import System
 
 # path = '../static'
-# path = '../dynamic'
+path = '../dynamic'
 # path = '../finsler'
-path = '../optim'
+# path = '../optim'
+# path = '../finsler099'
+# path = '../finslerrho06'
+# path = '../finlserrho05'
+# path = '../finslerrho045'
+# path = '../finslerrho04'
+# path = '../finslerrho03'
+# path = '../finslerrho01'
+# path = '../finslerrho08'
+# path = '../finstatic'
+path = '../finstatic_noopt'
+path = '../findynamic_noopt'
 
 # Weights and biases import
 W1_name = os.path.abspath(__file__ + "/../../weights/W1.csv")
@@ -48,7 +59,7 @@ P = np.load(path + '/P.npy')
 volume = 4/3*np.pi/np.sqrt(np.linalg.det(P))
 print(f"Volume of ellipsoid: {volume:.2f}")
 
-init_configs = np.load('init_configs.npy')
+init_configs = np.load('new_init_configs.npy')
 
 for config in init_configs:
   theta, vtheta, ref, eta0 = config
@@ -62,8 +73,9 @@ for config in init_configs:
   lyap = []
   steps = []
   in_loop = True
-  lyap_magnitude = 1e-15
-  max_steps = 20000
+  # lyap_magnitude = 1e-15
+  lyap_magnitude = 1e-40
+  max_steps = 350
   nsteps = 0
 
   # Simulation loop

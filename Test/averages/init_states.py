@@ -52,7 +52,7 @@ initial_configs = []
 
 # Loop to find a random initial state inside the ellipsoid
 
-for i in range(20):
+for i in range(100):
   in_ellip = False
   while not in_ellip:
     # Random initial state and disturbance
@@ -65,7 +65,7 @@ for i in range(20):
     s = System(W, b, bigX, ref, path)
 
     # Check if the initial state is inside the ellipsoid
-    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0 and (x0).T @ P @ (x0) >= 0.9:
+    if (x0 - s.xstar).T @ P @ (x0 - s.xstar) <= 1.0:
       # Initial eta0 computation with respect to the initial state
       eta0 = ((1 - (x0 - s.xstar).T @ P @ (x0 - s.xstar)) / (s.nlayers * 2))[0][0]
       

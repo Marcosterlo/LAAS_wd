@@ -49,7 +49,7 @@ class LMI():
 
     # Parameters definition
     self.alpha = cp.Parameter(nonneg=True)
-    self.lambda1 = cp.Parameter(nonneg=True)
+    self.convergence_rate = cp.Parameter(nonneg=True)
 
     # Auxiliary matrices
     self.Abar = self.A + self.B @ self.Rw
@@ -118,11 +118,16 @@ class LMI():
       self.bigX = [self.bigX1, self.bigX2, self.bigX3, self.bigX4]
     
     # Eta dynamics variables
-    if not self.old_trigger and not self.dynamic:
+    if self.dynamic:
       Rho = cp.Variable(self.nphi)
       self.Rho = cp.diag(Rho)
-      eps = cp.Variable(self.nx + self.nphi*2 + self.nq)
-      self.eps = cp.diag(eps)
+      if not self.old_trigger:
+        eps = cp.Variable(self.nx + self.nphi*2 + self.nq)
+        self.eps = cp.diag(eps)
+    else:
+      if not self.old_trigger:
+        eps = cp.Variable(self.nx + self.nphi + self.nq)
+        self.eps = cp.diag(eps)
       
     if self.optim_finsler:
       # ETM minimization variables
@@ -254,9 +259,9 @@ class LMI():
       self.finsler4 = self.Rsat.T @ (self.bigX4 - self.Omegas + self.bigX4.T - self.Omegas.T) @ self.Rsat + self.N4 @ self.hconstr + self.hconstr.T @ self.N4.T
    
     # Big M matrix definition with components w.r.t. sqrt(eta)
-    if self.dynamic or not self.old_trigger:
+    if self.dynamic:
       self.id = np.eye(self.nphi)
-      self.new_sec = 2*(self.Rho - self.id)
+      self.new_sec = 2*(self.Rho - self.convergence_rate * self.id)
       self.bigM = cp.bmat([
         [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
         [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec]
@@ -273,10 +278,18 @@ class LMI():
         self.constraints += [self.bigM + self.eps >> 0]
       else:
         self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
+
     else:
-      self.constraints += [self.bigM << -self.m_thres * np.eye(self.bigM.shape[0])]
-      self.constraints += [self.eps >> 0]
-      self.constraints += [self.bigM + self.eps >> 0]
+      if self.dynamic:
+        self.constraints += [self.Rho >> 0]
+        self.constraints += [self.bigM << -self.m_thres * np.eye(self.bigM.shape[0])]
+        self.constraints += [self.eps >> 0]
+        self.constraints += [self.bigM + self.eps >> 0]
+      else:
+        self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
+        self.constraints += [self.M + self.eps >> 0]
+        self.constraints += [self.eps >> 0]
+        self.constraints += [self.M + self.eps >> 0]
       self.constraints += [self.finsler1 << 0]
       self.constraints += [self.finsler2 << 0]
       self.constraints += [self.finsler3 << 0]
@@ -334,9 +347,10 @@ class LMI():
     warnings.filterwarnings("ignore", category=UserWarning, module='cvxpy')
 
   # Function that takes parameter values as input and solves the LMI
-  def solve(self, alpha_val, verbose=False): #, search=False):
+  def solve(self, alpha_val, convergence_rate, verbose=False): #, search=False):
     # Parameters update
     self.alpha.value = alpha_val
+    self.convergence_rate.value = convergence_rate
 
     try:
       self.prob.solve(solver=cp.MOSEK, verbose=True)
@@ -421,6 +435,10 @@ class LMI():
       np.save(f"{path_dir}/bigX2.npy", self.bigX2.value)
       np.save(f"{path_dir}/bigX3.npy", self.bigX3.value)
       np.save(f"{path_dir}/bigX4.npy", self.bigX4.value)
+      if self.dynamic:
+        np.save(f"{path_dir}/Rho.npy", self.Rho.value)
+      else:
+        np.save(f"{path_dir}/Rho.npy", np.zeros((self.nphi, self.nphi)))
       
 # Main loop execution 
 if __name__ == "__main__":
@@ -452,7 +470,7 @@ if __name__ == "__main__":
   b = [b1, b2, b3, b4]
 
   # Lmi object creation
-  lmi = LMI(W, b, 'new_finsler')
+  lmi = LMI(W, b, 'init')
   
   # Alpha search 
   # alpha = lmi.search_alpha(1.0, 0.0, 1e-5, 1.0 verbose=True)
@@ -460,4 +478,4 @@ if __name__ == "__main__":
   # Good alpha value found in previous simulations
   alpha = np.load('weights/alpha.npy')
 
-  lmi.solve(alpha, verbose=True)
+  lmi.solve(alpha, 0.8, verbose=True)
