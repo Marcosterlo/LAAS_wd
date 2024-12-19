@@ -4,19 +4,11 @@ from Test.system import System
 
 # path = '../static'
 path = '../dynamic'
-# path = '../finsler'
-# path = '../optim'
-# path = '../finsler099'
-# path = '../finslerrho06'
-# path = '../finlserrho05'
-# path = '../finslerrho045'
-# path = '../finslerrho04'
-# path = '../finslerrho03'
-# path = '../finslerrho01'
-# path = '../finslerrho08'
-# path = '../finstatic'
-path = '../finstatic_noopt'
-path = '../findynamic_noopt'
+# path = '../finstatic_noopt'
+# path = '../findynamic_noopt'
+# path = '../finstatic_opt'
+# path = '../findynamic_opt'
+# path = '../try08'
 
 # Weights and biases import
 W1_name = os.path.abspath(__file__ + "/../../weights/W1.csv")
@@ -76,6 +68,7 @@ for config in init_configs:
   # lyap_magnitude = 1e-15
   lyap_magnitude = 1e-40
   max_steps = 350
+  # max_steps = 5000
   nsteps = 0
 
   # Simulation loop

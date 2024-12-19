@@ -37,15 +37,12 @@ class LMI():
     self.nbigx4 = self.nx + self.neurons[3] * 2
 
     # Flag variables to determine which kind of LMI has to be solved
-    self.old_trigger = False
-    self.dynamic = False
-    self.optim_finsler = True
+    self.old_trigger = True
+    self.dynamic = True
+    self.optim_finsler = False
     
     # Sign definition of Delta V parameter
     self.m_thres = 1e-6
-
-    # Sign definition of epsilon parameter
-    self.eps_thresh = 1e-6
 
     # Parameters definition
     self.alpha = cp.Parameter(nonneg=True)
@@ -117,17 +114,13 @@ class LMI():
       self.bigX4 = cp.Variable((self.nbigx4, self.nbigx4))
       self.bigX = [self.bigX1, self.bigX2, self.bigX3, self.bigX4]
     
+    eps = cp.Variable(self.nx + self.nphi + self.nq)
+    self.eps = cp.diag(eps)
+    
     # Eta dynamics variables
     if self.dynamic:
       Rho = cp.Variable(self.nphi)
       self.Rho = cp.diag(Rho)
-      if not self.old_trigger:
-        eps = cp.Variable(self.nx + self.nphi*2 + self.nq)
-        self.eps = cp.diag(eps)
-    else:
-      if not self.old_trigger:
-        eps = cp.Variable(self.nx + self.nphi + self.nq)
-        self.eps = cp.diag(eps)
       
     if self.optim_finsler:
       # ETM minimization variables
@@ -260,36 +253,21 @@ class LMI():
    
     # Big M matrix definition with components w.r.t. sqrt(eta)
     if self.dynamic:
+      self.rho_eps = cp.Variable(nonneg=True)
       self.id = np.eye(self.nphi)
-      self.new_sec = 2*(self.Rho - self.convergence_rate * self.id)
-      self.bigM = cp.bmat([
-        [self.M, np.zeros((self.M.shape[0], self.new_sec.shape[1]))],
-        [np.zeros((self.new_sec.shape[0], self.M.shape[1])), self.new_sec]
-      ])
+      self.rho_lmi = 2*(self.Rho - self.convergence_rate * self.id)
     
     # Constraint definition 
     self.constraints = [self.P >> 0]
     self.constraints += [self.T >> 0]
-    if self.old_trigger:
-      if self.dynamic:
-        self.constraints += [self.Rho >> 0]
-        self.constraints += [self.bigM << -self.m_thres * np.eye(self.bigM.shape[0])]
-        self.constraints += [self.eps >> 0]
-        self.constraints += [self.bigM + self.eps >> 0]
-      else:
-        self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
-
-    else:
-      if self.dynamic:
-        self.constraints += [self.Rho >> 0]
-        self.constraints += [self.bigM << -self.m_thres * np.eye(self.bigM.shape[0])]
-        self.constraints += [self.eps >> 0]
-        self.constraints += [self.bigM + self.eps >> 0]
-      else:
-        self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
-        self.constraints += [self.M + self.eps >> 0]
-        self.constraints += [self.eps >> 0]
-        self.constraints += [self.M + self.eps >> 0]
+    self.constraints += [self.M << -self.m_thres * np.eye(self.M.shape[0])]
+    self.constraints += [self.eps >> 0]
+    self.constraints += [self.M + self.eps >> 0]
+    if self.dynamic:
+      self.constraints += [self.Rho >> 0]
+      self.constraints += [self.rho_lmi << 0]
+      self.constraints += [self.rho_lmi - self.rho_eps * self.id >> 0]
+    if not self.old_trigger:
       self.constraints += [self.finsler1 << 0]
       self.constraints += [self.finsler2 << 0]
       self.constraints += [self.finsler3 << 0]
@@ -335,7 +313,12 @@ class LMI():
       for i in range(self.nlayers):
         obj += self.alphax[i]
     else:
-      obj = cp.trace(self.P) + cp.trace(self.eps)
+      if self.old_trigger and not self.dynamic:
+        obj = cp.trace(self.P)
+      else:
+        obj = cp.trace(self.P) + cp.trace(self.eps)
+    if self.dynamic:
+      obj += self.rho_eps
 
     self.objective = cp.Minimize(obj)
 
@@ -364,11 +347,8 @@ class LMI():
         print(f"Max eigenvalue of P: {np.max(np.linalg.eigvals(self.P.value))}")
         print(f"Max eigenvalue of M: {np.max(np.linalg.eigvals(self.M.value))}") 
         print(f"Size of ROA: {np.pi/np.sqrt(np.linalg.det(self.P.value))}")
-        if not self.old_trigger:
-          if self.dynamic:
-            print(f"Rho value: {np.max(self.Rho)}")
-          else:
-            print(f"Rho value: {np.max(self.Rho.value)}")
+        if self.dynamic:
+            print(f"Rho value: {self.Rho.value}")
       
       # Returns area of ROA if feasible
       return np.pi/np.sqrt(np.linalg.det(self.P.value))
