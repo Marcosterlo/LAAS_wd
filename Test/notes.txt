@@ -1,20 +1,23 @@
 STATICO:
-rho = 0.00 = 35.62
-
+ottimizzato rho = 0.00 = 35.62
+nonottimizzato rho = 0.00 = 37.29
 DINAMICO:
-rho = 0.01 = 35.60
-rho = 0.21 = 35.61
-rho = 0.64 = 35.22
-rho = 0.66 = 35.60
-rho = 0.69 = 34.55
-rho = 0.70 = 33.21
-rho = 0.73 = 33.40
-rho = 0.77 = 34.35
-rho = 0.81 = 34.61
-rho = 0.82 = 34.69
-rho = 0.84 = 34.33
-rho = 0.85 = 27.85
-rho = 0.86 = 29.27
-rho = 0.87 = 32.04
-rho = 0.88 = 33.74
-rho = 0.89 = 33.15
+rho = 0.70 = 33.21 -> non ottimizzato 33.93
+rho = 0.86 = 29.27 -> non ottimizzato 35.98
+rho = 0.87 = 32.04 -> non ottimizzato 35.68
+rho = 0.89 = 33.15 -> non ottimizzato 35.76
+
+SCARTATI
+rho = 0.01 = 35.60 -> non ottimizzato 37.29
+rho = 0.21 = 35.61 -> non ottimizzato 35.84
+rho = 0.64 = 35.22 -> non ottimizzato 32.99
+rho = 0.66 = 35.60 -> non ottimizzato 39.32
+rho = 0.69 = 34.55 -> non ottimizzato 37.81
+rho = 0.73 = 33.40 -> non ottimizzato 34.38
+rho = 0.77 = 34.35 -> non ottimizzato 29.49
+rho = 0.81 = 34.61 -> non ottimizzato 31.52
+rho = 0.82 = 34.69 -> non ottimizzato 33.02
+rho = 0.84 = 34.33 -> non ottimizzato 34.36
+rho = 0.85 = 27.85 -> non ottimizzato 40.13 
+rho = 0.88 = 33.74 -> non ottimizzato 38.33
+
