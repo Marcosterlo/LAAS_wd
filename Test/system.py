@@ -206,12 +206,7 @@ class System():
 if __name__ == "__main__":
   import os
 
-  path = 'finstatic'
-  # path = 'finsler099'
-  # path = 'finlserrho05'
-  # path = 'finslerrho06'
-  # path = 'finslerrho045'
-  # path = 'optim'
+  path = 'finstatic_opt'
 
   # Weights and biases import
   W1_name = os.path.abspath(__file__ + "/../weights/W1.csv")
@@ -259,7 +254,7 @@ if __name__ == "__main__":
   ref_bound = 5 * np.pi / 180
 
   # Flag to decide wether start in a random initial configuration such that the initial state is inside the ellipsoid or not
-  random_start = False
+  random_start = True
 
   # Loop to find a random initial state inside the ellipsoid
   if random_start:
@@ -288,6 +283,9 @@ if __name__ == "__main__":
         
         # Initial state update in the system
         s.state = x0
+
+        # Rho value setup
+        s.rho = np.ones(s.nlayers) * 0.86
 
         # Flag variable update to stop the search
         in_ellip = True
@@ -323,8 +321,8 @@ if __name__ == "__main__":
   nsteps = 0
 
   # Magnitude of the Lyapunov function to stop the simulation
-  # lyap_magnitude = 1e-15
-  lyap_magnitude = 1e-400
+  lyap_magnitude = 1e-15
+  # lyap_magnitude = 1e-400
 
   # Maximum number of steps to stop the simulation
   max_steps = 5000
@@ -408,7 +406,7 @@ if __name__ == "__main__":
   import matplotlib.pyplot as plt
 
   # Control input plot
-  plot_cut = 5000
+  plot_cut = 200
   fig, axs = plt.subplots(4, 1, figsize=(10, 8), sharex=True)
   axs[0].plot(timegrid[:plot_cut], inputs[:plot_cut], label=r'u')
   # Ustar plot

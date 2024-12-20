@@ -21,3 +21,9 @@ rho = 0.84 = 34.33 -> non ottimizzato 34.36
 rho = 0.85 = 27.85 -> non ottimizzato 40.13 
 rho = 0.88 = 33.74 -> non ottimizzato 38.33
 
+STATI INIZIALI BUONI PER I PLOT
+
+x0 = [26.85 deg, -0.51, 0], ref = 2.73 deg, eta0 = 0.03         32.50 update rate. eventi iniziali solo primi layer. forma brutta ma migliorabile
+x0 = [-3.37 deg, 5.40, 0], ref = -1.10 deg, eta0 = 0.00         32.89 update rate. eventi iniziali solo primi layer. forma brutta ma migliorabile
+x0 = [26.09 deg, -4.55, 0], ref = 4.84 deg, eta0 = 0.03         38.97 update rate. dentro tutti gli ellissoidi e abbastanza brutto
+
