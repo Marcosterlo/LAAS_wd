@@ -36,6 +36,9 @@ class LMI():
     self.nbigx3 = self.nx + self.neurons[2] * 2
     self.nbigx4 = self.nx + self.neurons[3] * 2
 
+    self.dynamic = True
+    self.convergence_rate = 0.3
+
     # Sign definition of Delta V parameter
     self.m_thres = 1e-6
 
@@ -249,6 +252,16 @@ class LMI():
     self.constraints += [self.finsler3 << 0]
     self.constraints += [self.finsler4 << 0]
 
+    if self.dynamic:
+      Rho = cp.Variable(self.nphi)
+      self.Rho = cp.diag(Rho)
+      self.rho_eps = cp.Variable(nonneg=True)
+      self.id = np.eye(self.nphi)
+      self.rho_lmi = 2*(self.Rho - self.convergence_rate * self.id)
+      self.constraints += [self.Rho >> 0]
+      self.constraints += [self.rho_lmi << 0]
+      self.constraints += [self.rho_lmi + self.rho_lmi * self.id >> 0]
+
     # Minimization constraints of X_i for each layer
     for i in range(self.nlayers):
       mat = cp.bmat([
@@ -286,6 +299,9 @@ class LMI():
     obj = cp.trace(self.P) + cp.trace(self.eps)
     for i in range(self.nlayers):
       obj += self.alphax[i]
+    
+    if self.dynamic:
+      obj += self.rho_eps
 
     self.objective = cp.Minimize(obj)
 

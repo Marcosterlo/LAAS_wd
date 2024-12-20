@@ -3,12 +3,12 @@ import numpy as np
 from Test.system import System
 
 # path = '../static'
-path = '../dynamic'
+# path = '../dynamic'
 # path = '../finstatic_noopt'
 # path = '../findynamic_noopt'
-# path = '../finstatic_opt'
+path = '../finstatic_opt'
 # path = '../findynamic_opt'
-# path = '../try08'
+# path = '../try03'
 
 # Weights and biases import
 W1_name = os.path.abspath(__file__ + "/../../weights/W1.csv")
@@ -53,53 +53,59 @@ print(f"Volume of ellipsoid: {volume:.2f}")
 
 init_configs = np.load('new_init_configs.npy')
 
-for config in init_configs:
-  theta, vtheta, ref, eta0 = config
-  x0 = np.array([[theta], [vtheta], [0.0]])
-  s = System(W, b, bigX, ref, path)
-  s.state = x0
-  s.eta = np.ones(s.nlayers) * eta0
 
-  events = []
-  update_rates = []
-  lyap = []
-  steps = []
-  in_loop = True
-  # lyap_magnitude = 1e-15
-  lyap_magnitude = 1e-40
-  max_steps = 350
-  # max_steps = 5000
-  nsteps = 0
+rhos = np.linspace(0, 1, 100)
 
-  # Simulation loop
-  while in_loop:
-    nsteps += 1
-    state, _, e, eta = s.step()
-    events.append(e)
-    if path == 'static':
-      lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
-    else:
-      lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
-    # Stop condition
-    if lyap[-1] < lyap_magnitude or nsteps > max_steps:
-      in_loop = False
+for rho in rhos:
+  print(f"Current rho: {rho:.2f}")
+  for config in init_configs:
+    theta, vtheta, ref, eta0 = config
+    x0 = np.array([[theta], [vtheta], [0.0]])
+    s = System(W, b, bigX, ref, path)
+    s.state = x0
+    s.eta = np.ones(s.nlayers) * eta0
+    s.rho = np.ones(s.nlayers)*rho
 
-  events = np.array(events).squeeze()
-  steps.append(nsteps)
-  layer1_trigger = np.sum(events[:, 0]) / nsteps * 100
-  layer2_trigger = np.sum(events[:, 1]) / nsteps * 100
-  layer3_trigger = np.sum(events[:, 2]) / nsteps * 100
-  layer4_trigger = np.sum(events[:, 3]) / nsteps * 100
-  total_trigger = (layer1_trigger * s.neurons[0] + layer2_trigger * s.neurons[1] + layer3_trigger * s.neurons[2] + layer4_trigger * s.neurons[3]) / (s.nphi)
-  update_rates.append([layer1_trigger, layer2_trigger, layer3_trigger, layer4_trigger, total_trigger])
+    events = []
+    update_rates = []
+    lyap = []
+    steps = []
+    in_loop = True
+    # lyap_magnitude = 1e-15
+    lyap_magnitude = 1e-40
+    max_steps = 350
+    # max_steps = 5000
+    nsteps = 0
 
-path = path[3:]
-steps = np.mean(np.array(steps).squeeze())
-mean_rates = np.mean(update_rates, axis=0)
-print(path + f" average number of steps: {steps:.2f}")
-print(path + f" layer update rates: {mean_rates[0]:.2f}, {mean_rates[1]:.2f}, {mean_rates[2]:.2f}, {mean_rates[3]:.2f}")
-print(path + f" total update rate: {mean_rates[-1]:.2f}")
+    # Simulation loop
+    while in_loop:
+      nsteps += 1
+      state, _, e, eta = s.step()
+      events.append(e)
+      if path == 'static':
+        lyap.append((state - s.xstar).T @ P @ (state - s.xstar))
+      else:
+        lyap.append((state - s.xstar).T @ P @ (state - s.xstar) + 2*eta[0] + 2*eta[1] + 2*eta[2] + 2*eta[3])
+      # Stop condition
+      if lyap[-1] < lyap_magnitude or nsteps > max_steps:
+        in_loop = False
 
-np.save(path + '_steps.npy', steps)
-np.save(path + '_update_rates.npy', mean_rates)
-np.save(path + '_volume.npy', volume)
+    events = np.array(events).squeeze()
+    steps.append(nsteps)
+    layer1_trigger = np.sum(events[:, 0]) / nsteps * 100
+    layer2_trigger = np.sum(events[:, 1]) / nsteps * 100
+    layer3_trigger = np.sum(events[:, 2]) / nsteps * 100
+    layer4_trigger = np.sum(events[:, 3]) / nsteps * 100
+    total_trigger = (layer1_trigger * s.neurons[0] + layer2_trigger * s.neurons[1] + layer3_trigger * s.neurons[2] + layer4_trigger * s.neurons[3]) / (s.nphi)
+    update_rates.append([layer1_trigger, layer2_trigger, layer3_trigger, layer4_trigger, total_trigger])
+
+  new_path = path[3:]
+  steps = np.mean(np.array(steps).squeeze())
+  mean_rates = np.mean(update_rates, axis=0)
+  print(new_path + f" average number of steps: {steps:.2f}")
+  print(new_path + f" layer update rates: {mean_rates[0]:.2f}, {mean_rates[1]:.2f}, {mean_rates[2]:.2f}, {mean_rates[3]:.2f}")
+  print(new_path + f" total update rate: {mean_rates[-1]:.2f}")
+
+  np.save(new_path + '_steps.npy', steps)
+  np.save(new_path + '_update_rates.npy', mean_rates)
+  np.save(new_path + '_volume.npy', volume)
