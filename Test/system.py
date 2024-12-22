@@ -254,7 +254,7 @@ if __name__ == "__main__":
   ref_bound = 5 * np.pi / 180
 
   # Flag to decide wether start in a random initial configuration such that the initial state is inside the ellipsoid or not
-  random_start = True
+  random_start = False
 
   # Loop to find a random initial state inside the ellipsoid
   if random_start:
@@ -293,15 +293,16 @@ if __name__ == "__main__":
   
   # Fixed initial condition
   else:
-    theta = -9.43 * np.pi / 180
-    vtheta = 5.77
-    ref = 2.76 * np.pi / 180
-    eta0 = 0.01
+    theta = 26.61 * np.pi / 180
+    vtheta = 0.13
+    ref = 4.04 * np.pi / 180
+    eta0 = 0.04
 
     x0 = np.array([[theta], [vtheta], [0.0]])
     s = System(W, b, bigX, ref, path)
     s.state = x0
     s.eta = np.ones(s.nlayers) * eta0
+    s.rho = np.ones(s.nlayers) * 0.86
 
   print(f"Initial state: theta0 = {theta*180/np.pi:.2f} deg, vtheta0 = {vtheta:.2f} rad/s, constant disturance = {ref*180/np.pi:.2f} deg")
   print(f"Initial eta0: {eta0:.2f}")
@@ -434,7 +435,7 @@ if __name__ == "__main__":
   axs[2].plot(timegrid[:plot_cut], states[:plot_cut, 1] * events[:plot_cut, 3], marker='o', markerfacecolor='none', linestyle='None', label='Events')
   # axs[2].set_xlabel('Time steps',fontsize=14)
   axs[2].set_ylabel(r'$\dot \theta$ (rad/s)',fontsize=14)
-  axs[2].legend(fontsize=14, loc='upper right', ncols=3)
+  axs[2].legend(fontsize=14, loc='lower right', ncols=3)
   axs[2].grid(True)
 
   # Integrator state plot
@@ -449,11 +450,11 @@ if __name__ == "__main__":
   plt.show()
 
   # Eta plots
-  eta_cut = 5000
-  plt.plot(timegrid[:eta_cut], np.log(etas[:eta_cut, 0]), label=r'$\eta^1$')
-  plt.plot(timegrid[:eta_cut], np.log(etas[:eta_cut, 1]), label=r'$\eta^2$')
-  plt.plot(timegrid[:eta_cut], np.log(etas[:eta_cut, 2]), label=r'$\eta^3$')
-  plt.plot(timegrid[:eta_cut], np.log(etas[:eta_cut, 3]), label=r'$\eta^4$')
+  eta_cut = 100
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 0], label=r'$\eta^1$')
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 1], label=r'$\eta^2$')
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 2], label=r'$\eta^3$')
+  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 3], label=r'$\eta^4$')
   plt.legend(fontsize=14)
   plt.xlabel('Time steps', fontsize=14)
   plt.grid(True)
@@ -489,9 +490,10 @@ if __name__ == "__main__":
   plt.show()
 
   # Lyapunov function plot
-  lyap_diff = lyap_diff[:999]
-  plt.plot(timegrid[1:1000], timegrid[1:1000] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
-  plt.plot(timegrid[:999], lyap[:999], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
+  lyap_cut = 100
+  lyap_diff = lyap_diff[:lyap_cut]
+  plt.plot(timegrid[1:lyap_cut+1], timegrid[1:lyap_cut+1] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
+  plt.plot(timegrid[:lyap_cut], lyap[:lyap_cut], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
   plt.xlabel('Time steps', fontsize=14)
   plt.legend(fontsize=14)
   plt.grid(True)
