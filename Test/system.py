@@ -293,10 +293,10 @@ if __name__ == "__main__":
   
   # Fixed initial condition
   else:
-    theta = 26.61 * np.pi / 180
-    vtheta = 0.13
-    ref = 4.04 * np.pi / 180
-    eta0 = 0.04
+    theta = -10.67 * np.pi / 180
+    vtheta = -2.04
+    ref = -1.13 * np.pi / 180
+    eta0 = 0.001
 
     x0 = np.array([[theta], [vtheta], [0.0]])
     s = System(W, b, bigX, ref, path)
@@ -449,15 +449,27 @@ if __name__ == "__main__":
   axs[3].grid(True)
   plt.show()
 
+  fig, axs = plt.subplots(1, 2, figsize=(10, 4))
+  
+
+  # Lyapunov function plot
+  lyap_cut = 100
+  lyap_diff = lyap_diff[:lyap_cut]
+  axs[0].plot(timegrid[1:lyap_cut+1], timegrid[1:lyap_cut+1] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
+  axs[0].plot(timegrid[:lyap_cut], lyap[:lyap_cut], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
+  axs[0].set_xlabel('Time steps', fontsize=14)
+  axs[0].legend(fontsize=14)
+  axs[0].grid(True)
+
   # Eta plots
   eta_cut = 100
-  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 0], label=r'$\eta^1$')
-  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 1], label=r'$\eta^2$')
-  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 2], label=r'$\eta^3$')
-  plt.plot(timegrid[:eta_cut], etas[:eta_cut, 3], label=r'$\eta^4$')
-  plt.legend(fontsize=14)
-  plt.xlabel('Time steps', fontsize=14)
-  plt.grid(True)
+  axs[1].plot(timegrid[:eta_cut], etas[:eta_cut, 0], label=r'$\eta^1$')
+  axs[1].plot(timegrid[:eta_cut], etas[:eta_cut, 1], label=r'$\eta^2$')
+  axs[1].plot(timegrid[:eta_cut], etas[:eta_cut, 2], label=r'$\eta^3$')
+  axs[1].plot(timegrid[:eta_cut], etas[:eta_cut, 3], label=r'$\eta^4$')
+  axs[1].legend(fontsize=14)
+  axs[1].set_xlabel('Time steps', fontsize=14)
+  axs[1].grid(True)
   plt.show()
 
 
@@ -486,16 +498,6 @@ if __name__ == "__main__":
   plt.ylim(0, 5)
   plt.xlabel('Time steps', fontsize=14)
   plt.legend(fontsize=14, loc='upper center', ncol=4)
-  plt.grid(True)
-  plt.show()
-
-  # Lyapunov function plot
-  lyap_cut = 100
-  lyap_diff = lyap_diff[:lyap_cut]
-  plt.plot(timegrid[1:lyap_cut+1], timegrid[1:lyap_cut+1] * 0 - (lyap_diff - np.max(lyap_diff))/(np.min(lyap_diff) - np.max(lyap_diff)), 'r', label=r'$\Delta V(x, \boldsymbol{\eta})$')
-  plt.plot(timegrid[:lyap_cut], lyap[:lyap_cut], label=r'$V(x, \boldsymbol{\eta})$', markersize = 5)
-  plt.xlabel('Time steps', fontsize=14)
-  plt.legend(fontsize=14)
   plt.grid(True)
   plt.show()
 
